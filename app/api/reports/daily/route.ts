@@ -60,6 +60,11 @@ export async function GET(request: Request) {
       },
     ]);
 
+    // 3. Get all sales for the day for the detailed list
+    const sales = await Sale.find({
+      date: { $gte: start, $lte: end },
+    }).sort({ date: 1 });
+
     const stats = dailyStats[0] || {
       totalSales: 0,
       cashSales: 0,
@@ -73,6 +78,7 @@ export async function GET(request: Request) {
       cashSales: stats.cashSales,
       momoSales: stats.momoSales,
       transactionCount: stats.count,
+      sales,
       productBreakdown,
     });
   } catch (error) {

@@ -66,6 +66,7 @@ export interface DailyReport {
   cashSales: number;
   momoSales: number;
   transactionCount: number;
+  sales: ISale[];
   productBreakdown: {
     product: string;
     size: string;
