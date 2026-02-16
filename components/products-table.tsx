@@ -39,10 +39,10 @@ import { IProduct } from "@/types"
 const sizeSchema = z.object({
   size: z.string().min(1, "Size is required"),
   unit: z.string().min(1, "Unit is required"),
-  openingStock: z.number().min(0).default(0),
-  stockIn: z.number().min(0).default(0),
-  stockSold: z.number().min(0).default(0),
-  closingStock: z.number().min(0).default(0),
+  openingStock: z.number().min(0),
+  stockIn: z.number().min(0),
+  stockSold: z.number().min(0),
+  closingStock: z.number().min(0),
 })
 
 const productSchema = z.object({
@@ -58,7 +58,7 @@ export function ProductsTable() {
   const [editingProduct, setEditingProduct] = useState<IProduct | null>(null)
 
   const form = useForm<z.infer<typeof productSchema>>({
-    resolver: zodResolver(productSchema),
+    resolver: zodResolver(productSchema) as any,
     defaultValues: {
       name: "",
       sizes: [{ size: "500ml", unit: "Bottles", openingStock: 0, stockIn: 0, stockSold: 0, closingStock: 0 }],
@@ -66,7 +66,7 @@ export function ProductsTable() {
   })
 
   const { fields, append, remove } = useFieldArray({
-    control: form.control,
+    control: form.control as any,
     name: "sizes",
   })
 
@@ -102,7 +102,7 @@ export function ProductsTable() {
     }
   }
 
-  const onSubmit = async (values: z.infer<typeof productSchema>) => {
+  const onSubmit = async (values: any) => {
     try {
       const url = editingProduct 
         ? `/api/products/${editingProduct._id}` 
@@ -213,7 +213,7 @@ export function ProductsTable() {
                   {fields.map((field, index) => (
                     <div key={field.id} className="flex gap-2 items-start p-3 border rounded-md">
                       <FormField
-                        control={form.control}
+                        control={form.control as any}
                         name={`sizes.${index}.size`}
                         render={({ field }) => (
                           <FormItem className="flex-1">
@@ -225,7 +225,7 @@ export function ProductsTable() {
                         )}
                       />
                       <FormField
-                        control={form.control}
+                        control={form.control as any}
                         name={`sizes.${index}.unit`}
                         render={({ field }) => (
                           <FormItem className="flex-1">
@@ -277,7 +277,7 @@ export function ProductsTable() {
               </TableRow>
             ) : (
               products.map((product) => (
-                <TableRow key={product._id as string}>
+                <TableRow key={product._id.toString()}>
                   <TableCell className="font-medium">{product.name}</TableCell>
                   <TableCell>
                     <div className="flex flex-wrap gap-1">
@@ -303,7 +303,7 @@ export function ProductsTable() {
                       variant="ghost"
                       size="icon"
                       className="text-red-500 hover:text-red-700 hover:bg-red-50"
-                      onClick={() => handleDelete(product._id as string)}
+                      onClick={() => handleDelete(product._id.toString())}
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>

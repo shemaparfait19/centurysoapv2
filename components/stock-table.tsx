@@ -50,7 +50,7 @@ export function StockTable() {
     
     setEdits(prev => {
       const productEdits = prev[productId] ? [...prev[productId]] : 
-        [...products.find(p => p._id === productId)?.sizes || []]
+        [...products.find(p => p._id.toString() === productId)?.sizes || []]
       
       productEdits[sizeIndex] = {
         ...productEdits[sizeIndex],
@@ -105,8 +105,8 @@ export function StockTable() {
   )
 
   const getDisplaySize = (product: IProduct, sizeIndex: number) => {
-    if (edits[product._id as string]) {
-      return edits[product._id as string][sizeIndex]
+    if (edits[product._id.toString()]) {
+      return edits[product._id.toString()][sizeIndex]
     }
     return product.sizes[sizeIndex]
   }
@@ -161,7 +161,7 @@ export function StockTable() {
                 const totalAvailable = (size.openingStock || 0) + (size.stockIn || 0)
                 
                 return (
-                  <TableRow key={`${product._id}-${size.size}`} className={getRowColor(size.closingStock)}>
+                  <TableRow key={`${product._id.toString()}-${size.size}`} className={getRowColor(size.closingStock)}>
                     {index === 0 && (
                       <TableCell rowSpan={product.sizes.length} className="font-medium align-top border-r bg-white">
                         {product.name}
@@ -174,7 +174,7 @@ export function StockTable() {
                         min="0"
                         className="h-8"
                         value={size.openingStock}
-                        onChange={(e) => handleStockChange(product._id as string, index, 'openingStock', e.target.value)}
+                        onChange={(e) => handleStockChange(product._id.toString(), index, 'openingStock', e.target.value)}
                       />
                     </TableCell>
                     <TableCell>
@@ -183,7 +183,7 @@ export function StockTable() {
                         min="0"
                         className="h-8"
                         value={size.stockIn}
-                        onChange={(e) => handleStockChange(product._id as string, index, 'stockIn', e.target.value)}
+                        onChange={(e) => handleStockChange(product._id.toString(), index, 'stockIn', e.target.value)}
                       />
                     </TableCell>
                     <TableCell className="font-medium">{totalAvailable}</TableCell>

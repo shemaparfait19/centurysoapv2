@@ -38,26 +38,16 @@ const formSchema = z.object({
   clientName: z.string().min(2, {
     message: "Client name must be at least 2 characters.",
   }),
-  workerName: z.string({
-    required_error: "Please select a worker.",
-  }),
-  product: z.string({
-    required_error: "Please select a product.",
-  }),
-  size: z.string({
-    required_error: "Please select a size.",
-  }),
-  quantity: z.coerce.number().min(1, {
-    message: "Quantity must be at least 1.",
-  }),
-  unitPrice: z.coerce.number().min(1, {
-    message: "Unit price must be at least 1.",
-  }),
+  workerName: z.string().min(1, "Please select a worker."),
+  product: z.string().min(1, "Please select a product."),
+  size: z.string().min(1, "Please select a size."),
+  quantity: z.coerce.number().min(1, "Quantity is required"),
+  unitPrice: z.coerce.number().min(1, "Price is required"),
   paymentMethod: z.enum(["Cash", "MoMo"], {
-    required_error: "Please select a payment method.",
+    message: "Please select a payment method.",
   }),
   date: z.date({
-    required_error: "A date of sale is required.",
+    message: "A date of sale is required.",
   }),
 })
 
@@ -71,7 +61,7 @@ export function SalesForm() {
 
   // 1. Define your form.
   const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
+    resolver: zodResolver(formSchema) as any,
     defaultValues: {
       clientName: "",
       quantity: 1,
@@ -126,7 +116,7 @@ export function SalesForm() {
     }
   }, [selectedProduct, products, form])
 
-  async function onSubmit(values: z.infer<typeof formSchema>) {
+  async function onSubmit(values: any) {
     setSubmitting(true)
     try {
       const response = await fetch('/api/sales', {
@@ -189,7 +179,7 @@ export function SalesForm() {
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <FormField
-            control={form.control}
+            control={form.control as any}
             name="date"
             render={({ field }) => (
               <FormItem className="flex flex-col">
@@ -231,7 +221,7 @@ export function SalesForm() {
           />
 
           <FormField
-            control={form.control}
+            control={form.control as any}
             name="clientName"
             render={({ field }) => (
               <FormItem>
@@ -245,7 +235,7 @@ export function SalesForm() {
           />
 
           <FormField
-            control={form.control}
+            control={form.control as any}
             name="workerName"
             render={({ field }) => (
               <FormItem>
@@ -258,7 +248,7 @@ export function SalesForm() {
                   </FormControl>
                   <SelectContent>
                     {workers.map((worker) => (
-                      <SelectItem key={worker._id as string} value={worker.name}>
+                      <SelectItem key={worker._id.toString()} value={worker.name}>
                         {worker.name}
                       </SelectItem>
                     ))}
@@ -270,7 +260,7 @@ export function SalesForm() {
           />
 
           <FormField
-            control={form.control}
+            control={form.control as any}
             name="product"
             render={({ field }) => (
               <FormItem>
@@ -283,7 +273,7 @@ export function SalesForm() {
                   </FormControl>
                   <SelectContent>
                     {products.map((product) => (
-                      <SelectItem key={product._id as string} value={product.name}>
+                      <SelectItem key={product._id.toString()} value={product.name}>
                         {product.name}
                       </SelectItem>
                     ))}
@@ -295,7 +285,7 @@ export function SalesForm() {
           />
 
           <FormField
-            control={form.control}
+            control={form.control as any}
             name="size"
             render={({ field }) => (
               <FormItem>
@@ -325,7 +315,7 @@ export function SalesForm() {
           />
 
           <FormField
-            control={form.control}
+            control={form.control as any}
             name="paymentMethod"
             render={({ field }) => (
               <FormItem>
@@ -347,7 +337,7 @@ export function SalesForm() {
           />
 
           <FormField
-            control={form.control}
+            control={form.control as any}
             name="quantity"
             render={({ field }) => (
               <FormItem>
@@ -361,7 +351,7 @@ export function SalesForm() {
           />
 
           <FormField
-            control={form.control}
+            control={form.control as any}
             name="unitPrice"
             render={({ field }) => (
               <FormItem>

@@ -164,7 +164,7 @@ export default function SalesHistoryPage() {
               <SelectContent>
                 <SelectItem value="all">All Products</SelectItem>
                 {products.map(p => (
-                  <SelectItem key={p._id as string} value={p.name}>{p.name}</SelectItem>
+                  <SelectItem key={p._id.toString()} value={p.name}>{p.name}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -176,7 +176,7 @@ export default function SalesHistoryPage() {
               <SelectContent>
                 <SelectItem value="all">All Workers</SelectItem>
                 {workers.map(w => (
-                  <SelectItem key={w._id as string} value={w.name}>{w.name}</SelectItem>
+                  <SelectItem key={w._id.toString()} value={w.name}>{w.name}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -232,7 +232,7 @@ export default function SalesHistoryPage() {
                   </TableRow>
                 ) : (
                   sales.map((sale) => (
-                    <TableRow key={sale._id as string}>
+                    <TableRow key={sale._id.toString()}>
                       <TableCell>{formatShortDate(sale.date)}</TableCell>
                       <TableCell>{sale.clientName}</TableCell>
                       <TableCell>{sale.workerName}</TableCell>
@@ -251,7 +251,7 @@ export default function SalesHistoryPage() {
                           variant="ghost" 
                           size="icon" 
                           className="h-8 w-8 text-red-500 hover:text-red-700 hover:bg-red-50"
-                          onClick={() => handleDelete(sale._id as string)}
+                          onClick={() => handleDelete(sale._id.toString())}
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>

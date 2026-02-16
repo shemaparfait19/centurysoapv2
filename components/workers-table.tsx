@@ -42,7 +42,7 @@ const workerSchema = z.object({
   name: z.string().min(2, "Name involves at least 2 characters"),
   phone: z.string().min(10, "Phone number must be at least 10 digits"),
   role: z.string().min(2, "Role is required"),
-  active: z.boolean().default(true),
+  active: z.boolean(),
 })
 
 export function WorkersTable() {
@@ -53,7 +53,7 @@ export function WorkersTable() {
   const [editingWorker, setEditingWorker] = useState<IWorker | null>(null)
 
   const form = useForm<z.infer<typeof workerSchema>>({
-    resolver: zodResolver(workerSchema),
+    resolver: zodResolver(workerSchema) as any,
     defaultValues: {
       name: "",
       phone: "",
@@ -96,7 +96,7 @@ export function WorkersTable() {
     }
   }
 
-  const onSubmit = async (values: z.infer<typeof workerSchema>) => {
+  const onSubmit = async (values: any) => {
     try {
       const url = editingWorker 
         ? `/api/workers/${editingWorker._id}` 
@@ -179,7 +179,7 @@ export function WorkersTable() {
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                 <FormField
-                  control={form.control}
+                  control={form.control as any}
                   name="name"
                   render={({ field }) => (
                     <FormItem>
@@ -192,7 +192,7 @@ export function WorkersTable() {
                   )}
                 />
                 <FormField
-                  control={form.control}
+                  control={form.control as any}
                   name="phone"
                   render={({ field }) => (
                     <FormItem>
@@ -205,7 +205,7 @@ export function WorkersTable() {
                   )}
                 />
                 <FormField
-                  control={form.control}
+                  control={form.control as any}
                   name="role"
                   render={({ field }) => (
                     <FormItem>
@@ -218,7 +218,7 @@ export function WorkersTable() {
                   )}
                 />
                 <FormField
-                  control={form.control}
+                  control={form.control as any}
                   name="active"
                   render={({ field }) => (
                     <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
@@ -268,7 +268,7 @@ export function WorkersTable() {
               </TableRow>
             ) : (
               workers.map((worker) => (
-                <TableRow key={worker._id as string}>
+                <TableRow key={worker._id.toString()}>
                   <TableCell className="font-medium">{worker.name}</TableCell>
                   <TableCell>{worker.phone}</TableCell>
                   <TableCell>{worker.role}</TableCell>
@@ -293,7 +293,7 @@ export function WorkersTable() {
                       variant="ghost"
                       size="icon"
                       className="text-red-500 hover:text-red-700 hover:bg-red-50"
-                      onClick={() => handleDelete(worker._id as string)}
+                      onClick={() => handleDelete(worker._id.toString())}
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
