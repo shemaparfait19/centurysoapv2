@@ -4,12 +4,13 @@ import Worker from '@/models/Worker';
 
 export async function PUT(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   await dbConnect();
+  const { id } = await params;
   const updates = await request.json();
   try {
-    const worker = await Worker.findByIdAndUpdate(params.id, updates, { new: true });
+    const worker = await Worker.findByIdAndUpdate(id, updates, { new: true });
     if (!worker) return NextResponse.json({ error: 'Worker not found' }, { status: 404 });
     return NextResponse.json(worker);
   } catch (error) {
@@ -19,11 +20,12 @@ export async function PUT(
 
 export async function DELETE(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   await dbConnect();
+  const { id } = await params;
   try {
-    const worker = await Worker.findByIdAndDelete(params.id);
+    const worker = await Worker.findByIdAndDelete(id);
     if (!worker) return NextResponse.json({ error: 'Worker not found' }, { status: 404 });
     return NextResponse.json({ message: 'Worker deleted successfully' });
   } catch (error) {

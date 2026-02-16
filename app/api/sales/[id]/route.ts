@@ -6,11 +6,12 @@ import { ProductSize } from '@/types';
 
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   await dbConnect();
+  const { id } = await params;
   try {
-    const sale = await Sale.findById(params.id);
+    const sale = await Sale.findById(id);
     if (!sale) return NextResponse.json({ error: 'Sale not found' }, { status: 404 });
     return NextResponse.json(sale);
   } catch (error) {
@@ -20,11 +21,12 @@ export async function GET(
 
 export async function DELETE(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   await dbConnect();
+  const { id } = await params;
   try {
-    const sale = await Sale.findById(params.id);
+    const sale = await Sale.findById(id);
     if (!sale) return NextResponse.json({ error: 'Sale not found' }, { status: 404 });
 
     // Restore stock
@@ -38,7 +40,7 @@ export async function DELETE(
       }
     }
 
-    await Sale.findByIdAndDelete(params.id);
+    await Sale.findByIdAndDelete(id);
     return NextResponse.json({ message: 'Sale deleted successfully' });
   } catch (error) {
     return NextResponse.json({ error: 'Failed to delete sale' }, { status: 500 });
