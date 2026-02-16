@@ -192,8 +192,8 @@ export default function DailyReportPage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {reportData.sales.map((sale: any) => (
-                        <tr key={sale._id} className="border-b last:border-0 hover:bg-muted/50">
+                      {reportData.sales.map((sale) => (
+                        <tr key={sale._id.toString()} className="border-b last:border-0 hover:bg-muted/50">
                           <td className="py-2 px-2">{format(new Date(sale.date), "HH:mm")}</td>
                           <td className="py-2 px-2 font-medium">{sale.product}</td>
                           <td className="py-2 px-2">{sale.size}</td>
