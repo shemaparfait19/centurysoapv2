@@ -1,0 +1,8 @@
+{
+  "framework": "nextjs",
+  "cleanUrls": true,
+  "outputDirectory": ".next",
+  "github": {
+    "enabled": false
+  }
+}
