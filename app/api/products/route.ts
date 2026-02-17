@@ -3,13 +3,16 @@ import dbConnect from '@/lib/mongodb';
 import Product from '@/models/Product';
 
 export async function GET() {
-  await dbConnect();
-
   try {
+    await dbConnect();
     const products = await Product.find({});
     return NextResponse.json(products);
   } catch (error) {
-    return NextResponse.json({ error: 'Failed to fetch products' }, { status: 500 });
+    console.error('Failed to fetch products:', error);
+    return NextResponse.json(
+      { error: 'Failed to fetch products', details: error instanceof Error ? error.message : String(error) }, 
+      { status: 500 }
+    );
   }
 }
 

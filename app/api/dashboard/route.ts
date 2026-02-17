@@ -6,9 +6,8 @@ import { IProduct, ProductSize } from '@/types';
 import { startOfDay, endOfDay, subDays } from 'date-fns';
 
 export async function GET(request: Request) {
-  await dbConnect();
-
   try {
+    await dbConnect();
     const today = new Date();
     const start = startOfDay(today);
     const end = endOfDay(today);
