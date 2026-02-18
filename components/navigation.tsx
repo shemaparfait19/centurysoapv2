@@ -113,7 +113,7 @@ export function Navigation() {
           
           <div className="p-4 border-t border-slate-800">
             <div className="text-xs text-zinc-500 text-center">
-              © 2024 Century Cleaning Agency
+              ©century products developed by shemaparfait
             </div>
           </div>
         </div>
