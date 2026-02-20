@@ -11,7 +11,8 @@ import {
   FileText,
   Menu,
   X,
-  LogOut
+  LogOut,
+  TrendingUp
 } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
@@ -48,6 +49,12 @@ const routes = [
     color: 'text-purple-600',
   },
   {
+    label: 'Customers',
+    icon: Users,
+    href: '/customers',
+    color: 'text-orange-500',
+  },
+  {
     label: 'Workers',
     icon: Users,
     href: '/workers',
@@ -58,6 +65,12 @@ const routes = [
     icon: FileText,
     href: '/reports/daily',
     color: 'text-green-700',
+  },
+  {
+    label: 'Custom Reports',
+    icon: TrendingUp,
+    href: '/reports/custom',
+    color: 'text-indigo-600',
   },
 ];
 

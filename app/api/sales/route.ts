@@ -60,38 +60,46 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  await dbConnect();
-  
   try {
+    await dbConnect();
     const body = await request.json();
     
-    // 1. Check Product Stock BEFORE creating sale
-    const product = await Product.findOne({ name: body.product });
-    if (!product) {
-      return NextResponse.json({ error: 'Product not found' }, { status: 404 });
+    // 1. Validate Product Stock for ALL items BEFORE creating sale
+    for (const item of body.items) {
+      const product = await Product.findOne({ name: item.product });
+      if (!product) {
+        return NextResponse.json({ error: `Product not found: ${item.product}` }, { status: 404 });
+      }
+
+      const sizeIndex = product.sizes.findIndex((s: ProductSize) => s.size === item.size);
+      if (sizeIndex === -1) {
+        return NextResponse.json({ error: `Size not found: ${item.size} for ${item.product}` }, { status: 404 });
+      }
+
+      const availableStock = product.sizes[sizeIndex].closingStock;
+      if (availableStock < item.quantity) {
+        return NextResponse.json({ 
+          error: `Insufficient stock for ${item.product} (${item.size}). Only ${availableStock} units available.` 
+        }, { status: 400 });
+      }
     }
 
-    const sizeIndex = product.sizes.findIndex((s: ProductSize) => s.size === body.size);
-    if (sizeIndex === -1) {
-      return NextResponse.json({ error: 'Product size not found' }, { status: 404 });
+    // 2. Create Sale (only if all stock levels are sufficient)
+    const sale = await Sale.create({
+      ...body,
+      grandTotal: body.items.reduce((sum: number, item: any) => sum + item.total, 0)
+    });
+
+    // 3. Update Product Stock for ALL items
+    for (const item of body.items) {
+      const product = await Product.findOne({ name: item.product });
+      const sizeIndex = product.sizes.findIndex((s: ProductSize) => s.size === item.size);
+      
+      product.sizes[sizeIndex].stockSold += item.quantity;
+      product.sizes[sizeIndex].closingStock -= item.quantity;
+      
+      await product.save();
     }
-
-    // VALIDATE: Check if enough stock is available
-    const availableStock = product.sizes[sizeIndex].closingStock;
-    if (availableStock < body.quantity) {
-      return NextResponse.json({ 
-        error: `Insufficient stock. Only ${availableStock} units available.` 
-      }, { status: 400 });
-    }
-
-    // 2. Create Sale (only if stock is sufficient)
-    const sale = await Sale.create(body);
-
-    // 3. Update Product Stock
-    product.sizes[sizeIndex].stockSold += sale.quantity;
-    product.sizes[sizeIndex].closingStock -= sale.quantity;
-    
-    await product.save();
 
     return NextResponse.json(sale, { status: 201 });
   } catch (error) {

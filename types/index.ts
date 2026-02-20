@@ -17,16 +17,35 @@ export interface IProduct extends Document {
   updatedAt: Date;
 }
 
+// Customer Types
+export interface ICustomer extends Document {
+  name: string;
+  phone: string;
+  email?: string;
+  address?: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 // Sale Types
-export interface ISale extends Document {
-  date: Date;
-  clientName: string;
-  workerName: string;
+export interface ISaleItem {
   product: string;
   size: string;
   quantity: number;
   unitPrice: number;
   total: number;
+}
+
+export interface ISale extends Document {
+  date: Date;
+  customer: {
+    name: string;
+    phone: string;
+    id?: string;
+  };
+  workerName: string;
+  items: ISaleItem[];
+  grandTotal: number;
   paymentMethod: 'Cash' | 'MoMo';
   createdAt: Date;
 }
