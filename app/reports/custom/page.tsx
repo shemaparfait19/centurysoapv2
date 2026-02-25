@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { format, startOfMonth, endOfMonth } from "date-fns"
 import { CalendarIcon, Download, FileText, Filter, Loader2, TrendingUp } from "lucide-react"
 import jsPDF from "jspdf"
-import "jspdf-autotable"
+import autoTable from "jspdf-autotable"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
@@ -56,7 +56,7 @@ export default function CustomReportsPage() {
     doc.text(`Worker: ${worker === 'all' ? 'All Employees' : worker}`, 14, 33)
     
     // Summary
-    doc.autoTable({
+    autoTable(doc, {
       startY: 40,
       head: [["Metric", "Value"]],
       body: [
@@ -69,7 +69,7 @@ export default function CustomReportsPage() {
     
     // Product Breakdown
     doc.text("PRODUCT PERFORMANCE", 14, (doc as any).lastAutoTable.finalY + 10)
-    doc.autoTable({
+    autoTable(doc, {
       startY: (doc as any).lastAutoTable.finalY + 15,
       head: [["Product", "Size", "Quantity", "Revenue"]],
       body: data.products.map((p: any) => [p.product, p.size, p.quantity, formatCurrency(p.total)])

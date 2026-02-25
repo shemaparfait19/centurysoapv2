@@ -22,15 +22,23 @@ export async function GET(request: Request) {
       {
         $group: {
           _id: null,
-          totalSales: { $sum: '$total' },
+          totalSales: { $sum: { $ifNull: ['$grandTotal', '$total'] } },
           cashSales: {
             $sum: {
-              $cond: [{ $eq: ['$paymentMethod', 'Cash'] }, '$total', 0],
+              $cond: [
+                { $eq: ['$paymentMethod', 'Cash'] }, 
+                { $ifNull: ['$grandTotal', '$total'] }, 
+                0
+              ],
             },
           },
           momoSales: {
             $sum: {
-              $cond: [{ $eq: ['$paymentMethod', 'MoMo'] }, '$total', 0],
+              $cond: [
+                { $eq: ['$paymentMethod', 'MoMo'] }, 
+                { $ifNull: ['$grandTotal', '$total'] }, 
+                0
+              ],
             },
           },
         },
@@ -44,14 +52,22 @@ export async function GET(request: Request) {
     };
 
     // 2. Identify top 5 selling products (by quantity)
-    // We can look at all time or just this month. Let's do all time as per requirements implied
-    // actually usually "top selling" implies a time frame, but let's do generally top selling
-    // helping to identify best performers.
     const topProducts = await Sale.aggregate([
       {
+        $project: {
+          items: {
+            $ifNull: [
+              '$items', 
+              [{ product: '$product', size: '$size', quantity: '$quantity', total: '$total' }]
+            ]
+          }
+        }
+      },
+      { $unwind: '$items' },
+      {
         $group: {
-          _id: { product: '$product', size: '$size' },
-          quantity: { $sum: '$quantity' },
+          _id: { product: '$items.product', size: '$items.size' },
+          quantity: { $sum: '$items.quantity' },
         },
       },
       { $sort: { quantity: -1 } },

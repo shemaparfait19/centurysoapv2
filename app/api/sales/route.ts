@@ -28,7 +28,7 @@ export async function GET(request: Request) {
     query.date = { $gte: new Date(startDate) };
   }
 
-  if (product) query.product = product;
+  if (product) query['items.product'] = product;
   if (worker) query.workerName = worker;
   if (paymentMethod) query.paymentMethod = paymentMethod;
 
@@ -41,7 +41,12 @@ export async function GET(request: Request) {
     const total = await Sale.countDocuments(query);
     const totalAmount = await Sale.aggregate([
       { $match: query },
-      { $group: { _id: null, total: { $sum: '$total' } } }
+      { 
+        $group: { 
+          _id: null, 
+          total: { $sum: { $ifNull: ['$grandTotal', '$total'] } } 
+        } 
+      }
     ]);
 
     return NextResponse.json({

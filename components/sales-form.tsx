@@ -38,8 +38,8 @@ import { CustomerSearch } from "./customer-search"
 const itemSchema = z.object({
   product: z.string().min(1, "Product is required"),
   size: z.string().min(1, "Size is required"),
-  quantity: z.coerce.number().min(1, "Quantity must be at least 1"),
-  unitPrice: z.coerce.number().min(0, "Price must be at least 0"),
+  quantity: z.number().min(1, "Quantity must be at least 1"),
+  unitPrice: z.number().min(0, "Price must be at least 0"),
   total: z.number(),
 })
 
@@ -47,7 +47,7 @@ const formSchema = z.object({
   date: z.date(),
   customer: z.object({
     name: z.string().min(2, "Customer name is required"),
-    phone: z.string().min(10, "Valid phone number is required"),
+    phone: z.string().min(8, "Valid phone number (min 8 digits) is required"),
     id: z.string().optional(),
   }),
   workerName: z.string().min(1, "Worker is required"),
@@ -68,9 +68,9 @@ export function SalesForm() {
     resolver: zodResolver(formSchema),
     defaultValues: {
       date: new Date(),
-      customer: { name: "", phone: "" },
+      customer: { name: "", phone: "", id: "" },
       workerName: "",
-      paymentMethod: "Cash",
+      paymentMethod: "Cash" as const,
       items: [{ product: "", size: "", quantity: 1, unitPrice: 0, total: 0 }],
     },
   })
@@ -101,15 +101,39 @@ export function SalesForm() {
     fetchData()
   }, [toast])
 
-  // Watch items to update individual totals and grand total
+  // Debug: Log form validation errors
+  useEffect(() => {
+    if (Object.keys(form.formState.errors).length > 0) {
+      console.log("Form Validation Errors:", form.formState.errors)
+    }
+  }, [form.formState.errors])
+
+  // Debug: Log form validation errors and show toast
+  useEffect(() => {
+    const errorCount = Object.keys(form.formState.errors).length
+    if (errorCount > 0) {
+      console.log("Form Validation Errors:", form.formState.errors)
+      toast({
+        variant: "destructive",
+        title: "Validation Error",
+        description: `Please check ${errorCount} field(s) for errors. Make sure customer name, phone, and all item details are correct.`
+      })
+    }
+  }, [form.formState.errors, toast])
+
+  // Watch items to update totals
   const watchedItems = form.watch("items")
   const grandTotal = watchedItems.reduce((sum, item) => sum + (item.total || 0), 0)
 
   // Update individual item total when quantity or price changes
   const updateItemTotal = (index: number) => {
-    const item = form.getValues(`items.${index}`)
-    const total = (item.quantity || 0) * (item.unitPrice || 0)
-    form.setValue(`items.${index}.total`, total)
+    const items = form.getValues("items")
+    const item = items[index]
+    if (item) {
+      const q = Number(item.quantity) || 0
+      const p = Number(item.unitPrice) || 0
+      form.setValue(`items.${index}.total`, q * p)
+    }
   }
 
   const handleProductSelect = (index: number, productName: string) => {
@@ -142,7 +166,7 @@ export function SalesForm() {
             phone: customerData.phone,
             id: customerData._id
           },
-          grandTotal
+          grandTotal: grandTotal
         }),
       })
 
@@ -174,8 +198,26 @@ export function SalesForm() {
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 p-6 border rounded-xl bg-white shadow-sm">
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+        {Object.keys(form.formState.errors).length > 0 && (
+          <div className="p-4 bg-destructive/10 border border-destructive/20 rounded-lg space-y-2">
+            <h3 className="text-sm font-bold text-destructive flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-destructive animate-pulse" />
+              Missing or Invalid Fields:
+            </h3>
+            <ul className="text-xs text-destructive/80 list-disc list-inside space-y-1 font-medium">
+              {form.formState.errors.customer?.name && <li>Customer Name: {form.formState.errors.customer.name.message}</li>}
+              {form.formState.errors.customer?.phone && <li>Customer Phone: {form.formState.errors.customer.phone.message}</li>}
+              {form.formState.errors.workerName && <li>Worker: {form.formState.errors.workerName.message}</li>}
+              {form.formState.errors.items && <li>Items: {form.formState.errors.items.message}</li>}
+              {form.formState.errors.items && (form.formState.errors.items as any).length > 0 && (
+                <li className="mt-1 opacity-70">Check product selection and quantities for each item row.</li>
+              )}
+            </ul>
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6 border rounded-xl bg-white shadow-sm">
           {/* Customer & Global Info */}
           <FormField
             control={form.control}
@@ -194,6 +236,11 @@ export function SalesForm() {
                   />
                 </FormControl>
                 <FormMessage />
+                {form.formState.errors.customer?.phone && (
+                  <p className="text-xs text-destructive mt-1 font-medium italic">
+                    {form.formState.errors.customer.phone.message}
+                  </p>
+                )}
               </FormItem>
             )}
           />
@@ -323,7 +370,12 @@ export function SalesForm() {
                             type="number" 
                             placeholder="Qty" 
                             {...field} 
-                            onChange={(e) => { field.onChange(e); updateItemTotal(index); }} 
+                            value={field.value as number}
+                            onChange={(e) => { 
+                              const val = parseFloat(e.target.value) || 0;
+                              field.onChange(val); 
+                              updateItemTotal(index); 
+                            }} 
                           />
                         </FormControl>
                       </FormItem>
@@ -342,7 +394,12 @@ export function SalesForm() {
                             type="number" 
                             placeholder="Price" 
                             {...field} 
-                            onChange={(e) => { field.onChange(e); updateItemTotal(index); }} 
+                            value={field.value as number}
+                            onChange={(e) => { 
+                              const val = parseFloat(e.target.value) || 0;
+                              field.onChange(val); 
+                              updateItemTotal(index); 
+                            }} 
                           />
                         </FormControl>
                       </FormItem>

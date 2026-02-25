@@ -35,12 +35,24 @@ export async function GET(request: Request) {
       {
         $group: {
           _id: null,
-          totalSales: { $sum: '$grandTotal' },
+          totalSales: { $sum: { $ifNull: ['$grandTotal', '$total'] } },
           cashSales: {
-            $sum: { $cond: [{ $eq: ['$paymentMethod', 'Cash'] }, '$grandTotal', 0] }
+            $sum: { 
+              $cond: [
+                { $eq: ['$paymentMethod', 'Cash'] }, 
+                { $ifNull: ['$grandTotal', '$total'] }, 
+                0
+              ] 
+            }
           },
           momoSales: {
-            $sum: { $cond: [{ $eq: ['$paymentMethod', 'MoMo'] }, '$grandTotal', 0] }
+            $sum: { 
+              $cond: [
+                { $eq: ['$paymentMethod', 'MoMo'] }, 
+                { $ifNull: ['$grandTotal', '$total'] }, 
+                0
+              ] 
+            }
           },
           count: { $sum: 1 }
         }
@@ -50,6 +62,16 @@ export async function GET(request: Request) {
     // Product Breakdown
     const productBreakdown = await Sale.aggregate([
       { $match: query },
+      {
+        $project: {
+          items: {
+            $ifNull: [
+              '$items',
+              [{ product: '$product', size: '$size', quantity: '$quantity', total: '$total' }]
+            ]
+          }
+        }
+      },
       { $unwind: '$items' },
       {
         $group: {

@@ -72,15 +72,45 @@ export default function DailyReportPage() {
     doc.text(`MoMo: ${formatCurrency(reportData.momoSales)}`, 14, 44)
     doc.text(`Total Transactions: ${reportData.transactionCount}`, 14, 50)
 
-    const tableData = reportData.sales.map((sale) => [
-      format(new Date(sale.date), "HH:mm"),
-      sale.product,
-      sale.size,
-      sale.quantity.toString(),
-      formatCurrency(sale.unitPrice),
-      formatCurrency(sale.total),
-      sale.paymentMethod,
-      sale.workerName
+    const normalizedSales: any[] = []
+    reportData.sales.forEach(s => {
+      if (s.items && s.items.length > 0) {
+        s.items.forEach(item => {
+          normalizedSales.push({
+            time: format(new Date(s.date), "HH:mm"),
+            product: item.product,
+            size: item.size,
+            qty: item.quantity,
+            price: item.unitPrice,
+            total: item.total,
+            payment: s.paymentMethod,
+            worker: s.workerName
+          })
+        })
+      } else {
+        // Legacy
+        normalizedSales.push({
+          time: format(new Date(s.date), "HH:mm"),
+          product: (s as any).product,
+          size: (s as any).size,
+          qty: (s as any).quantity,
+          price: (s as any).unitPrice,
+          total: (s as any).total,
+          payment: s.paymentMethod,
+          worker: s.workerName
+        })
+      }
+    })
+
+    const tableData = normalizedSales.map(s => [
+      s.time,
+      s.product,
+      s.size,
+      s.qty.toString(),
+      formatCurrency(s.price),
+      formatCurrency(s.total),
+      s.payment,
+      s.worker
     ])
 
     autoTable(doc, {
@@ -182,10 +212,7 @@ export default function DailyReportPage() {
                     <thead>
                       <tr className="border-b text-left text-muted-foreground">
                         <th className="py-2 px-2 font-medium">Time</th>
-                        <th className="py-2 px-2 font-medium">Product</th>
-                        <th className="py-2 px-2 font-medium">Size</th>
-                        <th className="py-2 px-2 font-medium text-right">Qty</th>
-                        <th className="py-2 px-2 font-medium text-right">Unit Price</th>
+                        <th className="py-2 px-2 font-medium">Product (Items)</th>
                         <th className="py-2 px-2 font-medium text-right">Total</th>
                         <th className="py-2 px-2 font-medium text-center">Payment</th>
                         <th className="py-2 px-2 font-medium">Worker</th>
@@ -195,11 +222,22 @@ export default function DailyReportPage() {
                       {reportData.sales.map((sale) => (
                         <tr key={sale._id.toString()} className="border-b last:border-0 hover:bg-muted/50">
                           <td className="py-2 px-2">{format(new Date(sale.date), "HH:mm")}</td>
-                          <td className="py-2 px-2 font-medium">{sale.product}</td>
-                          <td className="py-2 px-2">{sale.size}</td>
-                          <td className="py-2 px-2 text-right">{sale.quantity}</td>
-                          <td className="py-2 px-2 text-right">{formatCurrency(sale.unitPrice)}</td>
-                          <td className="py-2 px-2 text-right font-medium">{formatCurrency(sale.total)}</td>
+                          <td className="py-2 px-2">
+                            {sale.items && sale.items.length > 0 ? (
+                              <div className="flex flex-col gap-0.5">
+                                {sale.items.map((item, idx) => (
+                                  <div key={idx} className="text-xs">
+                                    <span className="font-medium">{item.quantity}x</span> {item.product} ({item.size})
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <span>{(sale as any).product} ({(sale as any).size})</span>
+                            )}
+                          </td>
+                          <td className="py-2 px-2 text-right font-medium">
+                            {formatCurrency(sale.grandTotal || (sale as any).total)}
+                          </td>
                           <td className="py-2 px-2 text-center">
                             <span className={`px-2 py-0.5 rounded text-xs font-medium ${sale.paymentMethod === 'Cash' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'}`}>
                               {sale.paymentMethod}

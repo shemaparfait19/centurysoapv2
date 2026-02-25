@@ -23,12 +23,24 @@ export async function GET(request: Request) {
       {
         $group: {
           _id: null,
-          totalSales: { $sum: '$total' },
+          totalSales: { $sum: { $ifNull: ['$grandTotal', '$total'] } },
           cashSales: {
-            $sum: { $cond: [{ $eq: ['$paymentMethod', 'Cash'] }, '$total', 0] },
+            $sum: { 
+              $cond: [
+                { $eq: ['$paymentMethod', 'Cash'] }, 
+                { $ifNull: ['$grandTotal', '$total'] }, 
+                0
+              ] 
+            },
           },
           momoSales: {
-            $sum: { $cond: [{ $eq: ['$paymentMethod', 'MoMo'] }, '$total', 0] },
+            $sum: { 
+              $cond: [
+                { $eq: ['$paymentMethod', 'MoMo'] }, 
+                { $ifNull: ['$grandTotal', '$total'] }, 
+                0
+              ] 
+            },
           },
           count: { $sum: 1 },
         },
@@ -42,11 +54,23 @@ export async function GET(request: Request) {
           date: { $gte: start, $lte: end },
         },
       },
+      // First, try to unwind new structure
+      {
+        $project: {
+          items: {
+            $ifNull: [
+              '$items', 
+              [{ product: '$product', size: '$size', quantity: '$quantity', total: '$total' }]
+            ]
+          }
+        }
+      },
+      { $unwind: '$items' },
       {
         $group: {
-          _id: { product: '$product', size: '$size' },
-          quantity: { $sum: '$quantity' },
-          total: { $sum: '$total' },
+          _id: { product: '$items.product', size: '$items.size' },
+          quantity: { $sum: '$items.quantity' },
+          total: { $sum: '$items.total' },
         },
       },
       {

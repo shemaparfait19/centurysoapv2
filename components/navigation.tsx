@@ -126,7 +126,7 @@ export function Navigation() {
           
           <div className="p-4 border-t border-slate-800">
             <div className="text-xs text-zinc-500 text-center">
-              ©century products developed by shemaparfait
+              ©century products developed by Parfait
             </div>
           </div>
         </div>

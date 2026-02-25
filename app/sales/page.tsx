@@ -95,20 +95,25 @@ export default function SalesHistoryPage() {
 
   // Normalize sale for UI (Legacy vs New structure)
   const normalizeSale = (sale: any): ISale => {
-    if (sale.items && Array.isArray(sale.items)) return sale as ISale;
+    // If it's already the new format with customer info, return as is
+    if (sale.customer && sale.items && Array.isArray(sale.items)) {
+      return sale as ISale;
+    }
     
-    // Convert legacy to new format for display
+    // Otherwise, build a normalized object
     return {
       ...sale,
-      customer: { name: sale.clientName || "Unknown", phone: "N/A" },
-      items: [{
-        product: sale.product,
-        size: sale.size,
-        quantity: sale.quantity,
-        unitPrice: sale.unitPrice,
-        total: sale.total
-      }],
-      grandTotal: sale.total
+      customer: sale.customer || { name: sale.clientName || "Unknown", phone: "N/A" },
+      items: (sale.items && Array.isArray(sale.items) && sale.items.length > 0) 
+        ? sale.items 
+        : [{
+            product: sale.product,
+            size: sale.size,
+            quantity: sale.quantity,
+            unitPrice: sale.unitPrice,
+            total: sale.total
+          }],
+      grandTotal: sale.grandTotal || sale.total || 0
     } as unknown as ISale;
   }
 

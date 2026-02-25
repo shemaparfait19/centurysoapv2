@@ -10,7 +10,12 @@ export async function GET(request: Request) {
     
     let query = {};
     if (search) {
-      query = { name: { $regex: search, $options: 'i' } };
+      query = {
+        $or: [
+          { name: { $regex: search, $options: 'i' } },
+          { phone: { $regex: search, $options: 'i' } }
+        ]
+      };
     }
     
     const customers = await Customer.find(query).limit(10);
