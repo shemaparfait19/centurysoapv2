@@ -12,7 +12,8 @@ import {
   Menu,
   X,
   LogOut,
-  TrendingUp
+  TrendingUp,
+  CreditCard,
 } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
@@ -59,6 +60,12 @@ const routes = [
     icon: Users,
     href: '/workers',
     color: 'text-emerald-500',
+  },
+  {
+    label: 'Credit Tracking',
+    icon: CreditCard,
+    href: '/credits',
+    color: 'text-red-500',
   },
   {
     label: 'Daily Reports',

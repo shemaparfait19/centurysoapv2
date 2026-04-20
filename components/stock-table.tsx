@@ -69,6 +69,23 @@ export function StockTable() {
     })
   }
 
+  const handleCarryForward = async () => {
+    if (!confirm("Are you sure you want to start a new period? This will move current closing stock to opening stock and reset sold/in counts to zero.")) return
+    
+    setSaving(true)
+    try {
+      const res = await fetch('/api/products/carry-forward', { method: 'POST' })
+      if (res.ok) {
+        toast({ title: "Success", description: "New period started successfully." })
+        fetchProducts()
+      }
+    } catch (error) {
+      toast({ variant: "destructive", title: "Error", description: "Failed to start new period." })
+    } finally {
+      setSaving(false)
+    }
+  }
+
   const saveChanges = async () => {
     setSaving(true)
     try {
@@ -131,13 +148,19 @@ export function StockTable() {
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
-        {Object.keys(edits).length > 0 && (
-          <Button onClick={saveChanges} disabled={saving}>
+        <div className="flex gap-2">
+          <Button onClick={handleCarryForward} variant="outline" disabled={saving}>
             {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            <Save className="mr-2 h-4 w-4" />
-            Save Changes
+            Start New Period
           </Button>
-        )}
+          {Object.keys(edits).length > 0 && (
+            <Button onClick={saveChanges} disabled={saving}>
+              {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              <Save className="mr-2 h-4 w-4" />
+              Save Changes
+            </Button>
+          )}
+        </div>
       </div>
 
       <div className="border rounded-md">
@@ -149,7 +172,7 @@ export function StockTable() {
               <TableHead className="w-[120px]">Opening Stock</TableHead>
               <TableHead className="w-[120px]">Stock In</TableHead>
               <TableHead>Total Avail.</TableHead>
-              <TableHead>Sold</TableHead>
+              <TableHead>Sold (Period)</TableHead>
               <TableHead>Closing</TableHead>
               <TableHead>Status</TableHead>
             </TableRow>

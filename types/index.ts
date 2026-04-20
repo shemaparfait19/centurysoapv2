@@ -36,6 +36,14 @@ export interface ISaleItem {
   total: number;
 }
 
+export interface PaymentRecord {
+  _id?: string;
+  amount: number;
+  method: 'Cash' | 'MoMo';
+  date: Date;
+  note?: string;
+}
+
 export interface ISale extends Document {
   date: Date;
   customer: {
@@ -46,7 +54,11 @@ export interface ISale extends Document {
   workerName: string;
   items: ISaleItem[];
   grandTotal: number;
-  paymentMethod: 'Cash' | 'MoMo';
+  paymentMethod: 'Cash' | 'MoMo' | 'Credit';
+  paymentStatus: 'Paid' | 'Partial' | 'Pending';
+  amountPaid: number;
+  balance: number;
+  payments: PaymentRecord[];
   createdAt: Date;
 }
 

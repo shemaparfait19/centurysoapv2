@@ -13,6 +13,7 @@ export async function GET(request: Request) {
   const product = searchParams.get('product');
   const worker = searchParams.get('worker');
   const paymentMethod = searchParams.get('paymentMethod');
+  const paymentStatus = searchParams.get('paymentStatus');
   const page = parseInt(searchParams.get('page') || '1');
   const limit = parseInt(searchParams.get('limit') || '20');
   const skip = (page - 1) * limit;
@@ -31,6 +32,7 @@ export async function GET(request: Request) {
   if (product) query['items.product'] = product;
   if (worker) query.workerName = worker;
   if (paymentMethod) query.paymentMethod = paymentMethod;
+  if (paymentStatus) query.paymentStatus = paymentStatus;
 
   try {
     const sales = await Sale.find(query)
@@ -89,13 +91,36 @@ export async function POST(request: Request) {
       }
     }
 
-    // 2. Create Sale (only if all stock levels are sufficient)
+    // 2. Compute payment fields
+    const grandTotal = body.items.reduce((sum: number, item: any) => sum + item.total, 0);
+    let paymentStatus: 'Paid' | 'Partial' | 'Pending' = 'Paid';
+    let amountPaid = grandTotal;
+    let balance = 0;
+    const payments: any[] = [];
+
+    if (body.paymentMethod === 'Credit') {
+      const initial = Number(body.initialPayment) || 0;
+      amountPaid = initial;
+      balance = grandTotal - initial;
+      if (initial === 0) paymentStatus = 'Pending';
+      else if (initial < grandTotal) paymentStatus = 'Partial';
+      else { paymentStatus = 'Paid'; balance = 0; }
+      if (initial > 0) {
+        payments.push({ amount: initial, method: body.initialPaymentMethod || 'Cash', date: new Date(body.date) });
+      }
+    }
+
+    // 3. Create Sale (only if all stock levels are sufficient)
     const sale = await Sale.create({
       ...body,
-      grandTotal: body.items.reduce((sum: number, item: any) => sum + item.total, 0)
+      grandTotal,
+      paymentStatus,
+      amountPaid,
+      balance,
+      payments,
     });
 
-    // 3. Update Product Stock for ALL items
+    // 4. Update Product Stock for ALL items
     for (const item of body.items) {
       const product = await Product.findOne({ name: item.product });
       const sizeIndex = product.sizes.findIndex((s: ProductSize) => s.size === item.size);

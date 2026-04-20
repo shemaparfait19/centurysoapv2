@@ -51,7 +51,9 @@ const formSchema = z.object({
     id: z.string().optional(),
   }),
   workerName: z.string().min(1, "Worker is required"),
-  paymentMethod: z.enum(["Cash", "MoMo"]),
+  paymentMethod: z.enum(["Cash", "MoMo", "Credit"]),
+  initialPayment: z.number().min(0).optional(),
+  initialPaymentMethod: z.enum(["Cash", "MoMo"]).optional(),
   items: z.array(itemSchema).min(1, "At least one item is required"),
 })
 
@@ -71,6 +73,8 @@ export function SalesForm() {
       customer: { name: "", phone: "", id: "" },
       workerName: "",
       paymentMethod: "Cash" as const,
+      initialPayment: 0,
+      initialPaymentMethod: "Cash" as const,
       items: [{ product: "", size: "", quantity: 1, unitPrice: 0, total: 0 }],
     },
   })
@@ -166,7 +170,9 @@ export function SalesForm() {
             phone: customerData.phone,
             id: customerData._id
           },
-          grandTotal: grandTotal
+          grandTotal,
+          initialPayment: values.initialPayment || 0,
+          initialPaymentMethod: values.initialPaymentMethod || 'Cash',
         }),
       })
 
@@ -181,7 +187,9 @@ export function SalesForm() {
         customer: { name: "", phone: "" },
         items: [{ product: "", size: "", quantity: 1, unitPrice: 0, total: 0 }],
         paymentMethod: "Cash",
-        workerName: values.workerName, // Keep worker for convenience
+        initialPayment: 0,
+        initialPaymentMethod: "Cash",
+        workerName: values.workerName,
       })
     } catch (error) {
       toast({ 
@@ -297,12 +305,66 @@ export function SalesForm() {
                   <SelectContent>
                     <SelectItem value="Cash">Cash</SelectItem>
                     <SelectItem value="MoMo">MoMo</SelectItem>
+                    <SelectItem value="Credit">Credit (Pay Later)</SelectItem>
                   </SelectContent>
                 </Select>
                 <FormMessage />
               </FormItem>
             )}
           />
+
+          {form.watch("paymentMethod") === "Credit" && (
+            <div className="md:col-span-2 p-4 bg-amber-50 border border-amber-200 rounded-lg space-y-3">
+              <p className="text-sm font-semibold text-amber-800">Credit Sale — customer will pay later</p>
+              <div className="grid grid-cols-2 gap-3">
+                <FormField
+                  control={form.control}
+                  name="initialPayment"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-amber-700">Initial Payment (optional)</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          min="0"
+                          placeholder="0"
+                          {...field}
+                          value={field.value as number}
+                          onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="initialPaymentMethod"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-amber-700">Paid via</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
+                        <SelectContent>
+                          <SelectItem value="Cash">Cash</SelectItem>
+                          <SelectItem value="MoMo">MoMo</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </FormItem>
+                  )}
+                />
+              </div>
+              {(() => {
+                const initial = form.watch("initialPayment") || 0;
+                const remaining = grandTotal - initial;
+                return remaining > 0 ? (
+                  <p className="text-xs text-amber-700 font-medium">
+                    Balance to collect later: {new Intl.NumberFormat('en-RW', { style: 'currency', currency: 'RWF' }).format(remaining)}
+                  </p>
+                ) : null;
+              })()}
+            </div>
+          )}
         </div>
 
         {/* Items Section */}
