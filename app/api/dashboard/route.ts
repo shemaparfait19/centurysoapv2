@@ -82,6 +82,13 @@ export async function GET(request: Request) {
       },
     ]);
 
+    // 2b. Today's transaction count + credit sales
+    const todayCount = await Sale.countDocuments({ date: { $gte: start, $lte: end } });
+    const creditOutstanding = await Sale.aggregate([
+      { $match: { paymentStatus: { $in: ['Pending', 'Partial'] } } },
+      { $group: { _id: null, total: { $sum: '$balance' } } },
+    ]);
+
     // 3. Low stock alerts (closingStock < 10)
     const products = await Product.find({});
     const lowStockAlerts: any[] = [];
@@ -115,9 +122,10 @@ export async function GET(request: Request) {
       todayTotalSales: stats.totalSales,
       todayCashSales: stats.cashSales,
       todayMoMoSales: stats.momoSales,
-      totalSalesToday: stats.totalSales, // Duplicate but requested in different contexts
+      todayTransactions: todayCount,
+      totalSalesToday: stats.totalSales,
       totalProducts: totalProductsCount,
-      totalStockValue: 0, // Placeholder as we don't have cost price
+      totalOutstandingCredit: creditOutstanding[0]?.total || 0,
       topProducts,
       lowStockAlerts,
     });

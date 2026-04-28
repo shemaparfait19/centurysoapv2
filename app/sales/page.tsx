@@ -1,115 +1,83 @@
-"use client"
+'use client'
 
-import { useEffect, useState } from "react"
-import { format } from "date-fns"
-import { Download, Trash2, FileText, DollarSign } from "lucide-react"
-import * as XLSX from "xlsx"
+import { useEffect, useState } from 'react'
+import { format } from 'date-fns'
+import { Download, Trash2, FileText, DollarSign, SlidersHorizontal } from 'lucide-react'
+import * as XLSX from 'xlsx'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
+import { Label } from '@/components/ui/label'
+import { Pagination } from '@/components/pagination'
+import { formatCurrency, formatShortDate } from '@/lib/utils'
+import { useToast } from '@/components/ui/use-toast'
+import { ISale, IWorker } from '@/types'
+import { generateInvoicePDF } from '@/lib/invoice-pdf'
+import { cn } from '@/lib/utils'
 
-import { Button } from "@/components/ui/button"
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
-import { Input } from "@/components/ui/input"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog"
-import { Label } from "@/components/ui/label"
-import { Pagination } from "@/components/pagination"
-import { formatCurrency, formatShortDate } from "@/lib/utils"
-import { useToast } from "@/components/ui/use-toast"
-import { Skeleton } from "@/components/ui/skeleton"
-import { ISale, IWorker } from "@/types"
-import { generateInvoicePDF } from "@/lib/invoice-pdf"
+function PaymentBadge({ method, status }: { method: string; status?: string }) {
+  if (method === 'Credit') {
+    if (status === 'Pending') return <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-100 text-red-700">Unpaid</span>
+    if (status === 'Partial') return <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-700">Partial</span>
+    return <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700">Credit ✓</span>
+  }
+  if (method === 'Cash') return <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700">Cash</span>
+  return <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-700">MoMo</span>
+}
 
 export default function SalesHistoryPage() {
   const { toast } = useToast()
   const [sales, setSales] = useState<ISale[]>([])
   const [loading, setLoading] = useState(true)
-  const [total, setTotal] = useState(0)
-
-  // Filters
-  const [workerFilter, setWorkerFilter] = useState("all")
-  const [paymentFilter, setPaymentFilter] = useState("all")
-  const [dateFilter, setDateFilter] = useState("")
-
-  // Pagination
+  const [workers, setWorkers] = useState<IWorker[]>([])
+  const [workerFilter, setWorkerFilter] = useState('all')
+  const [paymentFilter, setPaymentFilter] = useState('all')
+  const [dateFilter, setDateFilter] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
   const [totalAmount, setTotalAmount] = useState(0)
+  const [showFilters, setShowFilters] = useState(false)
 
-  // Data for filters
-  const [workers, setWorkers] = useState<IWorker[]>([])
-
-  // Record Payment dialog state
   const [paymentDialog, setPaymentDialog] = useState<{ open: boolean; sale: ISale | null }>({ open: false, sale: null })
-  const [payAmount, setPayAmount] = useState("")
-  const [payMethod, setPayMethod] = useState<"Cash" | "MoMo">("Cash")
-  const [payNote, setPayNote] = useState("")
+  const [payAmount, setPayAmount] = useState('')
+  const [payMethod, setPayMethod] = useState<'Cash' | 'MoMo'>('Cash')
+  const [payNote, setPayNote] = useState('')
   const [paySubmitting, setPaySubmitting] = useState(false)
 
   useEffect(() => {
-    fetch('/api/workers')
-      .then(res => res.json())
-      .then(data => setWorkers(data))
-      .catch(err => console.error("Failed to load workers", err))
+    fetch('/api/workers').then(r => r.json()).then(setWorkers).catch(console.error)
   }, [])
 
-  useEffect(() => {
-    fetchSales()
-  }, [currentPage, workerFilter, paymentFilter, dateFilter])
+  useEffect(() => { fetchSales() }, [currentPage, workerFilter, paymentFilter, dateFilter])
 
   async function fetchSales() {
     setLoading(true)
     try {
-      const params = new URLSearchParams({ page: currentPage.toString(), limit: "20" })
-      if (workerFilter && workerFilter !== "all") params.append("worker", workerFilter)
-      if (paymentFilter && paymentFilter !== "all") params.append("paymentMethod", paymentFilter)
-      if (dateFilter) params.append("startDate", dateFilter)
-
-      const res = await fetch(`/api/sales?${params.toString()}`)
+      const params = new URLSearchParams({ page: String(currentPage), limit: '20' })
+      if (workerFilter !== 'all') params.append('worker', workerFilter)
+      if (paymentFilter !== 'all') params.append('paymentMethod', paymentFilter)
+      if (dateFilter) params.append('startDate', dateFilter)
+      const res = await fetch(`/api/sales?${params}`)
       if (res.ok) {
         const data = await res.json()
         setSales(data.sales)
-        setTotal(data.pagination.total)
         setTotalPages(data.pagination.pages)
         setTotalAmount(data.totalAmount)
       }
-    } catch (error) {
-      toast({ variant: "destructive", title: "Error", description: "Failed to fetch sales history" })
+    } catch {
+      toast({ variant: 'destructive', title: 'Error', description: 'Failed to fetch sales' })
     } finally {
       setLoading(false)
     }
   }
 
-  const normalizeSale = (sale: any): ISale => {
-    if (sale.customer && sale.items && Array.isArray(sale.items)) return sale as ISale
+  const normalize = (sale: any): ISale => {
+    if (sale.customer && Array.isArray(sale.items)) return sale as ISale
     return {
       ...sale,
-      customer: sale.customer || { name: sale.clientName || "Unknown", phone: "N/A" },
-      items: (sale.items && Array.isArray(sale.items) && sale.items.length > 0)
+      customer: sale.customer || { name: sale.clientName || 'Unknown', phone: 'N/A' },
+      items: (Array.isArray(sale.items) && sale.items.length > 0)
         ? sale.items
         : [{ product: sale.product, size: sale.size, quantity: sale.quantity, unitPrice: sale.unitPrice, total: sale.total }],
       grandTotal: sale.grandTotal || sale.total || 0,
@@ -117,12 +85,12 @@ export default function SalesHistoryPage() {
   }
 
   const exportToExcel = () => {
-    const flatSales: any[] = []
+    const rows: any[] = []
     sales.forEach(s => {
-      const ns = normalizeSale(s)
+      const ns = normalize(s)
       ns.items.forEach(item => {
-        flatSales.push({
-          Date: format(new Date(ns.date), "yyyy-MM-dd"),
+        rows.push({
+          Date: format(new Date(ns.date), 'yyyy-MM-dd'),
           Invoice: ns._id.toString().substring(0, 8).toUpperCase(),
           Customer: ns.customer.name,
           Worker: ns.workerName,
@@ -130,45 +98,44 @@ export default function SalesHistoryPage() {
           Size: item.size,
           Qty: item.quantity,
           Price: item.unitPrice,
-          ItemTotal: item.total,
-          GrandTotal: ns.grandTotal,
+          Total: ns.grandTotal,
           Payment: ns.paymentMethod,
           Status: (ns as any).paymentStatus || 'Paid',
           Balance: (ns as any).balance || 0,
         })
       })
     })
-    const worksheet = XLSX.utils.json_to_sheet(flatSales)
-    const workbook = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Detailed Sales")
-    XLSX.writeFile(workbook, `sales_report_${format(new Date(), "yyyyMMdd")}.xlsx`)
+    const ws = XLSX.utils.json_to_sheet(rows)
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, 'Sales')
+    XLSX.writeFile(wb, `sales_${format(new Date(), 'yyyyMMdd')}.xlsx`)
   }
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Are you sure? This will restore stock for all items in this sale.")) return
+    if (!confirm('Delete this sale? Stock will be restored.')) return
     try {
       const res = await fetch(`/api/sales/${id}`, { method: 'DELETE' })
       if (res.ok) {
-        toast({ title: "Deleted", description: "Sale record removed and stock restored." })
+        toast({ title: 'Deleted', description: 'Sale removed and stock restored.' })
         fetchSales()
       }
-    } catch (error) {
-      toast({ variant: "destructive", title: "Error", description: "Failed to delete" })
+    } catch {
+      toast({ variant: 'destructive', title: 'Error', description: 'Failed to delete' })
     }
   }
 
   const openPaymentDialog = (sale: ISale) => {
     setPaymentDialog({ open: true, sale })
-    setPayAmount("")
-    setPayMethod("Cash")
-    setPayNote("")
+    setPayAmount('')
+    setPayMethod('Cash')
+    setPayNote('')
   }
 
   const handleRecordPayment = async () => {
     if (!paymentDialog.sale) return
     const amount = parseFloat(payAmount)
     if (!amount || amount <= 0) {
-      toast({ variant: "destructive", title: "Invalid amount", description: "Enter a valid payment amount." })
+      toast({ variant: 'destructive', title: 'Invalid amount' })
       return
     }
     setPaySubmitting(true)
@@ -178,62 +145,62 @@ export default function SalesHistoryPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ amount, method: payMethod, note: payNote }),
       })
-      if (!res.ok) {
-        const err = await res.json()
-        throw new Error(err.error || "Failed")
-      }
-      toast({ title: "Payment recorded", description: `${formatCurrency(amount)} recorded successfully.` })
+      if (!res.ok) throw new Error((await res.json()).error)
+      toast({ title: 'Payment recorded', description: `${formatCurrency(amount)} recorded.` })
       setPaymentDialog({ open: false, sale: null })
       fetchSales()
-    } catch (error) {
-      toast({ variant: "destructive", title: "Error", description: error instanceof Error ? error.message : "Failed to record payment" })
+    } catch (e) {
+      toast({ variant: 'destructive', title: 'Error', description: e instanceof Error ? e.message : 'Failed' })
     } finally {
       setPaySubmitting(false)
     }
   }
 
-  const getPaymentBadge = (sale: any) => {
-    const method = sale.paymentMethod
-    const status = sale.paymentStatus || 'Paid'
-    if (method === 'Credit' && status === 'Pending') {
-      return <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-100 text-red-700">Unpaid</span>
-    }
-    if (method === 'Credit' && status === 'Partial') {
-      return <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-700">Partial</span>
-    }
-    if (method === 'Credit' && status === 'Paid') {
-      return <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700">Credit (Paid)</span>
-    }
-    if (method === 'Cash') return <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700">Cash</span>
-    return <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-700">MoMo</span>
-  }
-
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
+      {/* Header */}
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold tracking-tight">Sales History</h1>
-        <Button onClick={exportToExcel} variant="outline" className="gap-2">
-          <Download className="h-4 w-4" /> Export Report
-        </Button>
+        <div>
+          <h1 className="text-xl font-bold text-slate-900">Sales History</h1>
+          <p className="text-sm text-slate-500 mt-0.5">All recorded transactions</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowFilters(!showFilters)}
+            className={cn(
+              'w-10 h-10 rounded-xl flex items-center justify-center border transition-colors',
+              showFilters ? 'bg-emerald-50 border-emerald-200 text-emerald-600' : 'bg-white border-slate-200 text-slate-500'
+            )}
+          >
+            <SlidersHorizontal className="h-4 w-4" />
+          </button>
+          <button
+            onClick={exportToExcel}
+            className="flex items-center gap-2 text-sm font-semibold border border-slate-200 bg-white text-slate-600 hover:text-slate-900 px-3 h-10 rounded-xl transition-colors"
+          >
+            <Download className="h-4 w-4" />
+            <span className="hidden sm:inline">Export</span>
+          </button>
+        </div>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Transaction History</CardTitle>
-          <CardDescription>View, print invoices, record payments, and manage sales.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-            <Select value={workerFilter} onValueChange={setWorkerFilter}>
-              <SelectTrigger><SelectValue placeholder="Worker" /></SelectTrigger>
+      {/* Filters */}
+      {showFilters && (
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 space-y-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <Select value={workerFilter} onValueChange={v => { setWorkerFilter(v); setCurrentPage(1) }}>
+              <SelectTrigger className="border-slate-200 rounded-xl h-10">
+                <SelectValue placeholder="Worker" />
+              </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Workers</SelectItem>
                 {workers.map(w => <SelectItem key={w._id.toString()} value={w.name}>{w.name}</SelectItem>)}
               </SelectContent>
             </Select>
-
-            <Select value={paymentFilter} onValueChange={setPaymentFilter}>
-              <SelectTrigger><SelectValue placeholder="Payment" /></SelectTrigger>
+            <Select value={paymentFilter} onValueChange={v => { setPaymentFilter(v); setCurrentPage(1) }}>
+              <SelectTrigger className="border-slate-200 rounded-xl h-10">
+                <SelectValue placeholder="Payment" />
+              </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Methods</SelectItem>
                 <SelectItem value="Cash">Cash</SelectItem>
@@ -241,136 +208,133 @@ export default function SalesHistoryPage() {
                 <SelectItem value="Credit">Credit</SelectItem>
               </SelectContent>
             </Select>
-
-            <Input type="date" value={dateFilter} onChange={(e) => setDateFilter(e.target.value)} />
+            <Input
+              type="date"
+              value={dateFilter}
+              onChange={(e) => { setDateFilter(e.target.value); setCurrentPage(1) }}
+              className="border-slate-200 rounded-xl h-10"
+            />
           </div>
+        </div>
+      )}
 
-          <div className="rounded-md border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Customer</TableHead>
-                  <TableHead>Items</TableHead>
-                  <TableHead className="text-right">Total</TableHead>
-                  <TableHead>Payment</TableHead>
-                  <TableHead>Balance</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {loading ? (
-                  Array(5).fill(0).map((_, i) => (
-                    <TableRow key={i}><TableCell colSpan={7}><Skeleton className="h-10 w-full" /></TableCell></TableRow>
-                  ))
-                ) : sales.length === 0 ? (
-                  <TableRow><TableCell colSpan={7} className="h-24 text-center">No sales found.</TableCell></TableRow>
-                ) : (
-                  sales.map((s) => {
-                    const sale = normalizeSale(s)
-                    const saleAny = sale as any
-                    const hasBalance = (saleAny.balance || 0) > 0
-                    return (
-                      <TableRow key={sale._id.toString()} className={hasBalance ? "bg-amber-50/50" : ""}>
-                        <TableCell className="font-medium text-xs">{formatShortDate(sale.date)}</TableCell>
-                        <TableCell>
-                          <div className="flex flex-col">
-                            <span className="font-semibold">{sale.customer.name}</span>
-                            <span className="text-[10px] text-muted-foreground">{sale.workerName}</span>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="text-xs space-y-0.5">
-                            {sale.items.map((item, idx) => (
-                              <div key={idx} className="flex gap-1">
-                                <span className="font-medium">{item.quantity}x</span>
-                                <span className="truncate max-w-[120px]">{item.product} ({item.size})</span>
-                              </div>
-                            ))}
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-right font-bold text-primary">
-                          {formatCurrency(sale.grandTotal)}
-                        </TableCell>
-                        <TableCell>{getPaymentBadge(saleAny)}</TableCell>
-                        <TableCell>
-                          {hasBalance ? (
-                            <span className="text-red-600 font-semibold text-xs">{formatCurrency(saleAny.balance)}</span>
-                          ) : (
-                            <span className="text-green-600 text-xs">—</span>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex justify-end gap-1">
-                            {hasBalance && (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-8 px-2 text-amber-600 hover:text-amber-800"
-                                onClick={() => openPaymentDialog(sale)}
-                              >
-                                <DollarSign className="h-4 w-4 mr-1" /> Pay
-                              </Button>
-                            )}
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-8 px-2 text-indigo-600 hover:text-indigo-800"
-                              onClick={() => generateInvoicePDF(sale)}
-                            >
-                              <FileText className="h-4 w-4 mr-1" /> Invoice
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 text-red-500 hover:text-red-700"
-                              onClick={() => handleDelete(sale._id.toString())}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    )
-                  })
+      {/* Sale cards */}
+      <div className="space-y-3">
+        {loading ? (
+          [...Array(5)].map((_, i) => (
+            <div key={i} className="bg-white rounded-2xl p-4 h-[90px] animate-pulse border border-slate-100" />
+          ))
+        ) : sales.length === 0 ? (
+          <div className="bg-white rounded-2xl p-12 text-center border border-slate-100">
+            <FileText className="h-10 w-10 text-slate-300 mx-auto mb-3" />
+            <p className="text-slate-500">No sales found</p>
+          </div>
+        ) : (
+          sales.map((s) => {
+            const sale = normalize(s)
+            const saleAny = sale as any
+            const hasBalance = (saleAny.balance || 0) > 0
+            return (
+              <div
+                key={sale._id.toString()}
+                className={cn(
+                  'bg-white rounded-2xl p-4 shadow-sm border transition-colors',
+                  hasBalance ? 'border-amber-200 bg-amber-50/30' : 'border-slate-100'
                 )}
-              </TableBody>
-            </Table>
-          </div>
+              >
+                <div className="flex items-start justify-between gap-3">
+                  {/* Left: customer + items */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-semibold text-slate-900">{sale.customer.name}</span>
+                      <PaymentBadge method={saleAny.paymentMethod} status={saleAny.paymentStatus} />
+                    </div>
+                    <div className="mt-1 space-y-0.5">
+                      {sale.items.map((item, idx) => (
+                        <p key={idx} className="text-xs text-slate-600">
+                          <span className="font-semibold">{item.quantity}×</span> {item.product} <span className="text-slate-400">({item.size})</span>
+                        </p>
+                      ))}
+                    </div>
+                    <div className="flex items-center gap-3 mt-1.5">
+                      <span className="text-[10px] text-slate-400">{formatShortDate(sale.date)}</span>
+                      <span className="text-[10px] text-slate-400">{sale.workerName}</span>
+                      {hasBalance && (
+                        <span className="text-[10px] font-semibold text-red-600">
+                          Bal: {formatCurrency(saleAny.balance)}
+                        </span>
+                      )}
+                    </div>
+                  </div>
 
-          <div className="flex flex-col md:flex-row justify-between items-center gap-4 mt-6">
-            <div className="text-sm font-medium">
-              Period Total: <span className="text-xl font-bold text-primary ml-2">{formatCurrency(totalAmount)}</span>
-            </div>
-            <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} />
+                  {/* Right: total + actions */}
+                  <div className="flex flex-col items-end gap-2 flex-shrink-0">
+                    <span className="font-bold text-slate-900">{formatCurrency(sale.grandTotal)}</span>
+                    <div className="flex items-center gap-1">
+                      {hasBalance && (
+                        <button
+                          onClick={() => openPaymentDialog(sale)}
+                          className="flex items-center gap-1 text-xs font-semibold text-amber-700 bg-amber-100 hover:bg-amber-200 px-2 py-1 rounded-lg transition-colors"
+                        >
+                          <DollarSign className="h-3 w-3" /> Pay
+                        </button>
+                      )}
+                      <button
+                        onClick={() => generateInvoicePDF(sale)}
+                        className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+                      >
+                        <FileText className="h-4 w-4" />
+                      </button>
+                      <button
+                        onClick={() => handleDelete(sale._id.toString())}
+                        className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )
+          })
+        )}
+      </div>
+
+      {/* Footer */}
+      {!loading && sales.length > 0 && (
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="text-sm text-slate-500">
+            Period total: <span className="text-lg font-bold text-emerald-600 ml-1">{formatCurrency(totalAmount)}</span>
           </div>
-        </CardContent>
-      </Card>
+          <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} />
+        </div>
+      )}
 
       {/* Record Payment Dialog */}
-      <Dialog open={paymentDialog.open} onOpenChange={(open) => setPaymentDialog(prev => ({ ...prev, open }))}>
+      <Dialog open={paymentDialog.open} onOpenChange={(open) => setPaymentDialog(p => ({ ...p, open }))}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Record Payment</DialogTitle>
           </DialogHeader>
           {paymentDialog.sale && (
-            <div className="space-y-4 py-2">
-              <div className="p-3 bg-muted rounded-lg text-sm space-y-1">
+            <div className="space-y-4 py-1">
+              <div className="bg-slate-50 rounded-xl p-3 text-sm space-y-1">
                 <p><span className="font-medium">Customer:</span> {(paymentDialog.sale as any).customer?.name}</p>
                 <p><span className="font-medium">Total:</span> {formatCurrency((paymentDialog.sale as any).grandTotal)}</p>
-                <p><span className="font-medium">Paid so far:</span> {formatCurrency((paymentDialog.sale as any).amountPaid || 0)}</p>
-                <p className="text-red-600 font-bold"><span className="font-medium text-foreground">Balance:</span> {formatCurrency((paymentDialog.sale as any).balance || 0)}</p>
+                <p><span className="font-medium">Paid:</span> {formatCurrency((paymentDialog.sale as any).amountPaid || 0)}</p>
+                <p className="text-red-600 font-semibold">
+                  <span className="font-medium text-slate-700">Balance:</span> {formatCurrency((paymentDialog.sale as any).balance || 0)}
+                </p>
               </div>
 
-              {/* Payment history */}
               {((paymentDialog.sale as any).payments || []).length > 0 && (
                 <div>
-                  <p className="text-xs font-semibold text-muted-foreground mb-1">Payment History</p>
+                  <p className="text-xs font-semibold text-slate-500 mb-1.5">Payment History</p>
                   <div className="space-y-1 max-h-32 overflow-y-auto">
                     {((paymentDialog.sale as any).payments || []).map((p: any, i: number) => (
-                      <div key={i} className="flex justify-between text-xs p-2 bg-green-50 rounded">
-                        <span>{format(new Date(p.date), "dd MMM yyyy")} · {p.method}</span>
-                        <span className="font-semibold text-green-700">+{formatCurrency(p.amount)}</span>
+                      <div key={i} className="flex justify-between text-xs p-2 bg-emerald-50 rounded-lg">
+                        <span className="text-slate-600">{format(new Date(p.date), 'dd MMM yyyy')} · {p.method}</span>
+                        <span className="font-semibold text-emerald-700">+{formatCurrency(p.amount)}</span>
                       </div>
                     ))}
                   </div>
@@ -378,8 +342,8 @@ export default function SalesHistoryPage() {
               )}
 
               <div className="space-y-3">
-                <div className="space-y-1">
-                  <Label>Amount to pay (RWF)</Label>
+                <div className="space-y-1.5">
+                  <Label>Amount (RWF)</Label>
                   <Input
                     type="number"
                     min="1"
@@ -387,29 +351,39 @@ export default function SalesHistoryPage() {
                     placeholder="Enter amount"
                     value={payAmount}
                     onChange={(e) => setPayAmount(e.target.value)}
+                    className="rounded-xl"
                   />
                 </div>
-                <div className="space-y-1">
-                  <Label>Payment method</Label>
-                  <Select value={payMethod} onValueChange={(v) => setPayMethod(v as "Cash" | "MoMo")}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
+                <div className="space-y-1.5">
+                  <Label>Method</Label>
+                  <Select value={payMethod} onValueChange={(v) => setPayMethod(v as 'Cash' | 'MoMo')}>
+                    <SelectTrigger className="rounded-xl"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="Cash">Cash</SelectItem>
                       <SelectItem value="MoMo">MoMo</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="space-y-1">
+                <div className="space-y-1.5">
                   <Label>Note (optional)</Label>
-                  <Input placeholder="e.g. partial payment" value={payNote} onChange={(e) => setPayNote(e.target.value)} />
+                  <Input
+                    placeholder="e.g. partial payment"
+                    value={payNote}
+                    onChange={(e) => setPayNote(e.target.value)}
+                    className="rounded-xl"
+                  />
                 </div>
               </div>
             </div>
           )}
           <DialogFooter>
             <Button variant="outline" onClick={() => setPaymentDialog({ open: false, sale: null })}>Cancel</Button>
-            <Button onClick={handleRecordPayment} disabled={paySubmitting}>
-              {paySubmitting ? "Saving..." : "Record Payment"}
+            <Button
+              onClick={handleRecordPayment}
+              disabled={paySubmitting}
+              className="bg-emerald-500 hover:bg-emerald-600"
+            >
+              {paySubmitting ? 'Saving...' : 'Record Payment'}
             </Button>
           </DialogFooter>
         </DialogContent>

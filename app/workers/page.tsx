@@ -1,24 +1,13 @@
-import { WorkersTable } from "@/components/workers-table";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { WorkersTable } from '@/components/workers-table'
 
 export default function WorkersPage() {
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold tracking-tight">Workers Management</h1>
+    <div className="space-y-5">
+      <div>
+        <h1 className="text-xl font-bold text-slate-900">Workers</h1>
+        <p className="text-sm text-slate-500 mt-0.5">Manage your sales team and staff</p>
       </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Team Directory</CardTitle>
-          <CardDescription>
-            Manage your sales representatives and staff members.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <WorkersTable />
-        </CardContent>
-      </Card>
+      <WorkersTable />
     </div>
-  );
+  )
 }

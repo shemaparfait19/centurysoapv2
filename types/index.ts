@@ -86,8 +86,10 @@ export interface DashboardStats {
   todayTotalSales: number;
   todayCashSales: number;
   todayMoMoSales: number;
+  todayTransactions: number;
   totalProducts: number;
   totalSalesToday: number;
+  totalOutstandingCredit: number;
   topProducts: {
     product: string;
     size: string;

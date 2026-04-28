@@ -1,57 +1,44 @@
-"use client"
+'use client'
 
-import { useState, useEffect } from "react"
-import { format } from "date-fns"
-import { CalendarIcon, Download, Loader2 } from "lucide-react"
-import jsPDF from "jspdf"
-import autoTable from "jspdf-autotable"
+import { useState, useEffect } from 'react'
+import { format } from 'date-fns'
+import { CalendarIcon, Download, Loader2, TrendingUp, Banknote, Smartphone, ShoppingBag, CreditCard } from 'lucide-react'
+import jsPDF from 'jspdf'
+import autoTable from 'jspdf-autotable'
+import { Button } from '@/components/ui/button'
+import { Calendar } from '@/components/ui/calendar'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { cn, formatCurrency } from '@/lib/utils'
+import { useToast } from '@/components/ui/use-toast'
+import { DailyReport } from '@/types'
 
-import { Button } from "@/components/ui/button"
-import { Calendar } from "@/components/ui/calendar"
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover"
-import { cn, formatCurrency } from "@/lib/utils"
-import { useToast } from "@/components/ui/use-toast"
-import { DailyReport } from "@/types"
+function StatCard({ label, value, sub, color }: { label: string; value: string; sub?: string; color: string }) {
+  return (
+    <div className={cn('rounded-2xl p-4 border', color)}>
+      <p className="text-xs font-semibold uppercase tracking-wide opacity-70">{label}</p>
+      <p className="text-2xl font-black mt-1">{value}</p>
+      {sub && <p className="text-xs opacity-60 mt-0.5">{sub}</p>}
+    </div>
+  )
+}
 
 export default function DailyReportPage() {
   const { toast } = useToast()
   const [date, setDate] = useState<Date>(new Date())
   const [reportData, setReportData] = useState<DailyReport | null>(null)
   const [loading, setLoading] = useState(false)
+  const [calOpen, setCalOpen] = useState(false)
 
-  useEffect(() => {
-    fetchReport(date)
-  }, [date])
+  useEffect(() => { fetchReport(date) }, [date])
 
   async function fetchReport(selectedDate: Date) {
     setLoading(true)
     try {
-      const formattedDate = format(selectedDate, "yyyy-MM-dd")
-      const res = await fetch(`/api/reports/daily?date=${formattedDate}`)
-      if (res.ok) {
-        const data = await res.json()
-        setReportData(data)
-      } else {
-        setReportData(null)
-      }
-    } catch (error) {
-      console.error("Failed to fetch report", error)
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Could not load daily report.",
-      })
+      const res = await fetch(`/api/reports/daily?date=${format(selectedDate, 'yyyy-MM-dd')}`)
+      if (res.ok) setReportData(await res.json())
+      else setReportData(null)
+    } catch {
+      toast({ variant: 'destructive', title: 'Error', description: 'Could not load daily report.' })
     } finally {
       setLoading(false)
     }
@@ -59,204 +46,145 @@ export default function DailyReportPage() {
 
   const exportPDF = () => {
     if (!reportData) return
-
     const doc = new jsPDF()
-    const title = `Daily Sales Report - ${format(date, "PPP")}`
-    
-    doc.setFontSize(20)
-    doc.text(title, 14, 22)
+    doc.setFontSize(18)
+    doc.text(`Daily Report — ${format(date, 'PPP')}`, 14, 22)
+    doc.setFontSize(10)
+    doc.text(`Total: ${formatCurrency(reportData.totalSales)}  |  Cash: ${formatCurrency(reportData.cashSales)}  |  MoMo: ${formatCurrency(reportData.momoSales)}`, 14, 32)
 
-    doc.setFontSize(11)
-    doc.text(`Total Sales: ${formatCurrency(reportData.totalSales)}`, 14, 32)
-    doc.text(`Cash: ${formatCurrency(reportData.cashSales)}`, 14, 38)
-    doc.text(`MoMo: ${formatCurrency(reportData.momoSales)}`, 14, 44)
-    doc.text(`Total Transactions: ${reportData.transactionCount}`, 14, 50)
-
-    const normalizedSales: any[] = []
+    const rows: any[][] = []
     reportData.sales.forEach(s => {
-      if (s.items && s.items.length > 0) {
-        s.items.forEach(item => {
-          normalizedSales.push({
-            time: format(new Date(s.date), "HH:mm"),
-            product: item.product,
-            size: item.size,
-            qty: item.quantity,
-            price: item.unitPrice,
-            total: item.total,
-            payment: s.paymentMethod,
-            worker: s.workerName
-          })
-        })
-      } else {
-        // Legacy
-        normalizedSales.push({
-          time: format(new Date(s.date), "HH:mm"),
-          product: (s as any).product,
-          size: (s as any).size,
-          qty: (s as any).quantity,
-          price: (s as any).unitPrice,
-          total: (s as any).total,
-          payment: s.paymentMethod,
-          worker: s.workerName
-        })
-      }
+      const items = s.items && s.items.length > 0 ? s.items : [{ product: (s as any).product, size: (s as any).size, quantity: (s as any).quantity, unitPrice: (s as any).unitPrice, total: (s as any).total }]
+      items.forEach(item => {
+        rows.push([format(new Date(s.date), 'HH:mm'), item.product, item.size, item.quantity, formatCurrency(item.unitPrice), formatCurrency(item.total), s.paymentMethod, s.workerName])
+      })
     })
-
-    const tableData = normalizedSales.map(s => [
-      s.time,
-      s.product,
-      s.size,
-      s.qty.toString(),
-      formatCurrency(s.price),
-      formatCurrency(s.total),
-      s.payment,
-      s.worker
-    ])
 
     autoTable(doc, {
-      startY: 58,
+      startY: 40,
       head: [['Time', 'Product', 'Size', 'Qty', 'Unit Price', 'Total', 'Payment', 'Worker']],
-      body: tableData,
+      body: rows,
     })
+    doc.save(`daily_report_${format(date, 'yyyy-MM-dd')}.pdf`)
+  }
 
-    doc.save(`daily_report_${format(date, "yyyy-MM-dd")}.pdf`)
+  const paymentBadge = (method: string) => {
+    if (method === 'Cash') return 'bg-emerald-100 text-emerald-700'
+    if (method === 'MoMo') return 'bg-blue-100 text-blue-700'
+    return 'bg-amber-100 text-amber-700'
   }
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <h1 className="text-3xl font-bold tracking-tight">Daily Summary</h1>
+    <div className="space-y-5">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3 justify-between">
+        <div>
+          <h1 className="text-xl font-bold text-slate-900">Daily Summary</h1>
+          <p className="text-sm text-slate-500 mt-0.5">Sales breakdown for a selected date</p>
+        </div>
         <div className="flex items-center gap-2">
-          <Popover>
+          <Popover open={calOpen} onOpenChange={setCalOpen}>
             <PopoverTrigger asChild>
               <Button
-                variant={"outline"}
-                className={cn(
-                  "w-[240px] justify-start text-left font-normal",
-                  !date && "text-muted-foreground"
-                )}
+                variant="outline"
+                className={cn('justify-start text-left font-normal rounded-xl border-slate-200 h-10', !date && 'text-muted-foreground')}
               >
                 <CalendarIcon className="mr-2 h-4 w-4" />
-                {date ? format(date, "PPP") : <span>Pick a date</span>}
+                {date ? format(date, 'PP') : 'Pick a date'}
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0" align="end">
               <Calendar
                 mode="single"
                 selected={date}
-                onSelect={(d) => d && setDate(d)}
-                disabled={(d) => d > new Date() || d < new Date("1900-01-01")}
+                onSelect={(d) => { if (d) { setDate(d); setCalOpen(false) } }}
+                disabled={(d) => d > new Date()}
                 initialFocus
               />
             </PopoverContent>
           </Popover>
-          <Button onClick={exportPDF} disabled={!reportData || loading} variant="default">
-            <Download className="mr-2 h-4 w-4" />
-            Export PDF
+          <Button
+            onClick={exportPDF}
+            disabled={!reportData || loading}
+            className="bg-emerald-500 hover:bg-emerald-600 rounded-xl h-10"
+          >
+            <Download className="h-4 w-4 mr-2" /> PDF
           </Button>
         </div>
       </div>
 
       {loading ? (
-        <div className="flex justify-center p-12">
-          <Loader2 className="h-8 w-8 animate-spin" />
+        <div className="flex justify-center py-20">
+          <Loader2 className="h-8 w-8 animate-spin text-emerald-500" />
         </div>
       ) : reportData ? (
-        <div className="grid gap-6">
-          {/* Summary Cards */}
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total Sales</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-primary">{formatCurrency(reportData.totalSales)}</div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Transactions</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{reportData.transactionCount}</div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Cash Sales</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-emerald-600">{formatCurrency(reportData.cashSales)}</div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">MoMo Sales</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-blue-600">{formatCurrency(reportData.momoSales)}</div>
-              </CardContent>
-            </Card>
+        <div className="space-y-5">
+          {/* Stat cards */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <StatCard
+              label="Total Sales"
+              value={formatCurrency(reportData.totalSales)}
+              color="bg-emerald-50 border-emerald-200 text-emerald-900"
+            />
+            <StatCard
+              label="Transactions"
+              value={String(reportData.transactionCount)}
+              color="bg-slate-50 border-slate-200 text-slate-900"
+            />
+            <StatCard
+              label="Cash"
+              value={formatCurrency(reportData.cashSales)}
+              color="bg-blue-50 border-blue-200 text-blue-900"
+            />
+            <StatCard
+              label="MoMo"
+              value={formatCurrency(reportData.momoSales)}
+              color="bg-violet-50 border-violet-200 text-violet-900"
+            />
           </div>
 
-          {/* Breakdown Table */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Sales Breakdown</CardTitle>
-              <CardDescription>Detailed list of transactions for {format(date, "PPP")}</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {reportData.sales.length > 0 ? (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b text-left text-muted-foreground">
-                        <th className="py-2 px-2 font-medium">Time</th>
-                        <th className="py-2 px-2 font-medium">Product (Items)</th>
-                        <th className="py-2 px-2 font-medium text-right">Total</th>
-                        <th className="py-2 px-2 font-medium text-center">Payment</th>
-                        <th className="py-2 px-2 font-medium">Worker</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {reportData.sales.map((sale) => (
-                        <tr key={sale._id.toString()} className="border-b last:border-0 hover:bg-muted/50">
-                          <td className="py-2 px-2">{format(new Date(sale.date), "HH:mm")}</td>
-                          <td className="py-2 px-2">
-                            {sale.items && sale.items.length > 0 ? (
-                              <div className="flex flex-col gap-0.5">
-                                {sale.items.map((item, idx) => (
-                                  <div key={idx} className="text-xs">
-                                    <span className="font-medium">{item.quantity}x</span> {item.product} ({item.size})
-                                  </div>
-                                ))}
-                              </div>
-                            ) : (
-                              <span>{(sale as any).product} ({(sale as any).size})</span>
-                            )}
-                          </td>
-                          <td className="py-2 px-2 text-right font-medium">
-                            {formatCurrency(sale.grandTotal || (sale as any).total)}
-                          </td>
-                          <td className="py-2 px-2 text-center">
-                            <span className={`px-2 py-0.5 rounded text-xs font-medium ${sale.paymentMethod === 'Cash' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'}`}>
-                              {sale.paymentMethod}
-                            </span>
-                          </td>
-                          <td className="py-2 px-2 text-muted-foreground">{sale.workerName}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              ) : (
-                <div className="text-center py-8 text-muted-foreground">No sales recorded for this date.</div>
-              )}
-            </CardContent>
-          </Card>
+          {/* Sales table */}
+          <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+            <div className="px-5 py-4 border-b border-slate-100">
+              <h2 className="font-semibold text-slate-900">Transactions</h2>
+              <p className="text-xs text-slate-500 mt-0.5">{format(date, 'PPP')}</p>
+            </div>
+            {reportData.sales.length === 0 ? (
+              <div className="py-12 text-center text-slate-400">No sales recorded for this date.</div>
+            ) : (
+              <div className="divide-y divide-slate-50">
+                {reportData.sales.map((sale) => (
+                  <div key={sale._id.toString()} className="px-5 py-3 flex items-start justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-xs font-mono text-slate-400">{format(new Date(sale.date), 'HH:mm')}</span>
+                        <span className={cn('text-[10px] font-bold px-2 py-0.5 rounded-full', paymentBadge(sale.paymentMethod))}>
+                          {sale.paymentMethod}
+                        </span>
+                      </div>
+                      <div className="mt-1 space-y-0.5">
+                        {(sale.items && sale.items.length > 0 ? sale.items : [{ product: (sale as any).product, size: (sale as any).size, quantity: (sale as any).quantity }]).map((item, idx) => (
+                          <p key={idx} className="text-sm text-slate-700">
+                            <span className="font-semibold">{item.quantity}×</span> {item.product} <span className="text-slate-400">({item.size})</span>
+                          </p>
+                        ))}
+                      </div>
+                      <p className="text-xs text-slate-400 mt-0.5">{sale.workerName}</p>
+                    </div>
+                    <div className="text-right flex-shrink-0">
+                      <p className="font-bold text-slate-900">{formatCurrency(sale.grandTotal || (sale as any).total)}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       ) : (
-        <div className="text-center py-12 text-muted-foreground">Select a date to view the report.</div>
+        <div className="bg-white rounded-2xl p-12 text-center border border-slate-100">
+          <TrendingUp className="h-10 w-10 text-slate-300 mx-auto mb-3" />
+          <p className="text-slate-500">Select a date to view the daily report</p>
+        </div>
       )}
     </div>
   )

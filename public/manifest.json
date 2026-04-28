@@ -1,0 +1,38 @@
+{
+  "name": "Century Cleaning Agency",
+  "short_name": "Century",
+  "description": "Inventory & Sales Management for Century Cleaning Agency",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#10b981",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "New Sale",
+      "short_name": "Sale",
+      "description": "Record a new sale",
+      "url": "/sales/new"
+    },
+    {
+      "name": "Stock Management",
+      "short_name": "Stock",
+      "description": "Manage inventory",
+      "url": "/stock"
+    }
+  ]
+}
