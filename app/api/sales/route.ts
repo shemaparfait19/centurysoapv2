@@ -120,15 +120,39 @@ export async function POST(request: Request) {
       payments,
     });
 
-    // 4. Update Product Stock for ALL items
+    // 4. Update Product Stock for ALL items (FIFO batch deduction)
     for (const item of body.items) {
       const product = await Product.findOne({ name: item.product });
       const sizeIndex = product.sizes.findIndex((s: ProductSize) => s.size === item.size);
-      
-      product.sizes[sizeIndex].stockSold += item.quantity;
-      product.sizes[sizeIndex].closingStock -= item.quantity;
-      
-      await product.save();
+      const size = product.sizes[sizeIndex];
+
+      // Update size-level totals atomically
+      await Product.findByIdAndUpdate(product._id, {
+        $inc: {
+          [`sizes.${sizeIndex}.stockSold`]: item.quantity,
+          [`sizes.${sizeIndex}.closingStock`]: -item.quantity,
+        },
+      });
+
+      // FIFO batch deduction — atomic $inc per batch entry
+      if (size.batches && size.batches.length > 0) {
+        const sorted = [...size.batches]
+          .map((b: any, origIndex: number) => ({ ...b.toObject(), origIndex }))
+          .sort((a: any, b: any) => new Date(a.receivedDate).getTime() - new Date(b.receivedDate).getTime());
+
+        let left = item.quantity;
+        for (const batch of sorted) {
+          if (left <= 0) break;
+          const take = Math.min(batch.remaining, left);
+          left -= take;
+          await Product.findByIdAndUpdate(product._id, {
+            $inc: {
+              [`sizes.${sizeIndex}.batches.${batch.origIndex}.quantitySold`]: take,
+              [`sizes.${sizeIndex}.batches.${batch.origIndex}.remaining`]: -take,
+            },
+          });
+        }
+      }
     }
 
     return NextResponse.json(sale, { status: 201 });

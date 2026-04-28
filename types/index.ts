@@ -1,6 +1,15 @@
 import { Document } from 'mongoose';
 
 // Product Types
+export interface BatchEntry {
+  _id?: string;
+  batchNumber: string;
+  receivedDate: Date;
+  quantityIn: number;
+  quantitySold: number;
+  remaining: number;
+}
+
 export interface ProductSize {
   size: string;
   unit: string;
@@ -8,6 +17,7 @@ export interface ProductSize {
   stockIn: number;
   stockSold: number;
   closingStock: number;
+  batches: BatchEntry[];
 }
 
 export interface IProduct extends Document {

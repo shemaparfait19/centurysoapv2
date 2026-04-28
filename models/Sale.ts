@@ -20,8 +20,8 @@ const SaleSchema = new Schema<ISale>(
   {
     date: { type: Date, required: true },
     customer: {
-      name: { type: String, required: true },
-      phone: { type: String, required: true },
+      name: { type: String, default: 'Walk-in' },
+      phone: { type: String, default: 'N/A' },
       id: { type: Schema.Types.ObjectId, ref: 'Customer' },
     },
     workerName: { type: String, required: true },
@@ -44,4 +44,8 @@ SaleSchema.index({ workerName: 1 });
 SaleSchema.index({ paymentMethod: 1 });
 SaleSchema.index({ paymentStatus: 1 });
 
-export default mongoose.models.Sale || mongoose.model<ISale>('Sale', SaleSchema);
+if (process.env.NODE_ENV === 'development') {
+  delete mongoose.models['Sale'];
+}
+
+export default mongoose.models['Sale'] || mongoose.model<ISale>('Sale', SaleSchema);

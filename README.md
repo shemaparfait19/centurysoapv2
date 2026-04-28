@@ -72,3 +72,15 @@ This application is optimized for deployment on [Vercel](https://vercel.com). St
 ## Support
 
 For any issues or questions, please refer to the documentation or contact support.
+
+
+
+
+
+
+
+
+
+---------DOCUMENTION----------
+
+

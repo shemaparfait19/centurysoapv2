@@ -46,10 +46,10 @@ const itemSchema = z.object({
 const formSchema = z.object({
   date: z.date(),
   customer: z.object({
-    name: z.string().min(2, "Customer name is required"),
-    phone: z.string().min(8, "Valid phone number (min 8 digits) is required"),
+    name: z.string().optional(),
+    phone: z.string().optional(),
     id: z.string().optional(),
-  }),
+  }).optional(),
   workerName: z.string().min(1, "Worker is required"),
   paymentMethod: z.enum(["Cash", "MoMo", "Credit"]),
   initialPayment: z.number().min(0).optional(),
@@ -151,25 +151,32 @@ export function SalesForm() {
   const onSubmit = async (values: FormValues) => {
     setSubmitting(true)
     try {
-      // 1. Process/Save Customer first
-      const custRes = await fetch('/api/customers', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(values.customer),
-      })
-      const customerData = await custRes.json()
-      
+      // 1. Save customer only if a name was entered
+      let customerPayload: { name: string; phone: string; id?: string } = {
+        name: 'Walk-in',
+        phone: 'N/A',
+      }
+      if (values.customer?.name?.trim()) {
+        const custRes = await fetch('/api/customers', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(values.customer),
+        })
+        const customerData = await custRes.json()
+        customerPayload = {
+          name: customerData.name,
+          phone: customerData.phone,
+          id: customerData._id,
+        }
+      }
+
       // 2. Submit Sale
       const saleRes = await fetch('/api/sales', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...values,
-          customer: {
-            name: customerData.name,
-            phone: customerData.phone,
-            id: customerData._id
-          },
+          customer: customerPayload,
           grandTotal,
           initialPayment: values.initialPayment || 0,
           initialPaymentMethod: values.initialPaymentMethod || 'Cash',

@@ -14,6 +14,7 @@ import {
   LogOut,
   TrendingUp,
   CreditCard,
+  Boxes,
 } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
@@ -42,6 +43,12 @@ const routes = [
     icon: Package,
     href: '/stock',
     color: 'text-orange-700',
+  },
+  {
+    label: 'Batch Tracking',
+    icon: Boxes,
+    href: '/batches',
+    color: 'text-blue-500',
   },
   {
     label: 'Products',

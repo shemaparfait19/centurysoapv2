@@ -50,12 +50,20 @@ export const generateInvoicePDF = (sale: ISale) => {
   
   doc.setFont("helvetica", "normal")
   doc.setFontSize(10)
+
+  const saleAny = sale as any
+  const paymentStatus: string = saleAny.paymentStatus || 'Paid'
+  const paymentLabel =
+    sale.paymentMethod === 'Credit'
+      ? `Credit — ${paymentStatus}`
+      : sale.paymentMethod
+
   const detailRows = [
     ["Date:", format(new Date(sale.date), "PPP")],
     ["Worker:", sale.workerName],
-    ["Payment:", sale.paymentMethod]
+    ["Payment:", paymentLabel],
   ]
-  
+
   let detailY = 62
   detailRows.forEach(([label, value]) => {
     doc.setFont("helvetica", "bold")
@@ -115,10 +123,63 @@ export const generateInvoicePDF = (sale: ISale) => {
   const totalStr = new Intl.NumberFormat('en-RW', { style: 'currency', currency: 'RWF' }).format(sale.grandTotal)
   doc.text(totalStr, pageWidth - 25, finalY + 18, { align: 'right' })
   
+  // Credit payment summary
+  let afterTotalY = finalY + 35
+  if (saleAny.paymentMethod === 'Credit') {
+    const amountPaid: number = saleAny.amountPaid || 0
+    const balance: number = saleAny.balance || 0
+    const payments: any[] = saleAny.payments || []
+
+    // Box
+    doc.setFillColor(255, 247, 237) // amber-50
+    doc.roundedRect(margin, afterTotalY, pageWidth - margin * 2, payments.length > 0 ? 40 + payments.length * 8 : 32, 2, 2, 'F')
+    doc.setDrawColor(251, 191, 36)
+    doc.roundedRect(margin, afterTotalY, pageWidth - margin * 2, payments.length > 0 ? 40 + payments.length * 8 : 32, 2, 2, 'S')
+
+    doc.setFontSize(10)
+    doc.setFont('helvetica', 'bold')
+    doc.setTextColor(146, 64, 14) // amber-800
+    doc.text('CREDIT PAYMENT SUMMARY', margin + 5, afterTotalY + 9)
+
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(9)
+    doc.setTextColor(120, 53, 15)
+    doc.text(`Total:`, margin + 5, afterTotalY + 18)
+    doc.text(new Intl.NumberFormat('en-RW', { style: 'currency', currency: 'RWF' }).format(sale.grandTotal), margin + 35, afterTotalY + 18)
+
+    doc.text(`Paid:`, margin + 5, afterTotalY + 26)
+    doc.setTextColor(amountPaid >= sale.grandTotal ? 21 : 120, amountPaid >= sale.grandTotal ? 128 : 53, amountPaid >= sale.grandTotal ? 61 : 15)
+    doc.text(new Intl.NumberFormat('en-RW', { style: 'currency', currency: 'RWF' }).format(amountPaid), margin + 35, afterTotalY + 26)
+
+    if (balance > 0) {
+      doc.setTextColor(185, 28, 28)
+      doc.setFont('helvetica', 'bold')
+      doc.text(`Balance due:`, margin + 5, afterTotalY + 34)
+      doc.text(new Intl.NumberFormat('en-RW', { style: 'currency', currency: 'RWF' }).format(balance), margin + 45, afterTotalY + 34)
+    }
+
+    if (payments.length > 0) {
+      doc.setFont('helvetica', 'bold')
+      doc.setTextColor(120, 53, 15)
+      doc.setFontSize(8)
+      doc.text('Payment history:', margin + 5, afterTotalY + 42)
+      doc.setFont('helvetica', 'normal')
+      payments.forEach((p, i) => {
+        doc.text(
+          `${format(new Date(p.date), 'dd MMM yyyy')}  ${p.method}  +${new Intl.NumberFormat('en-RW', { style: 'currency', currency: 'RWF' }).format(p.amount)}${p.note ? '  (' + p.note + ')' : ''}`,
+          margin + 5,
+          afterTotalY + 50 + i * 8
+        )
+      })
+    }
+
+    afterTotalY += (payments.length > 0 ? 48 + payments.length * 8 : 40)
+  }
+
   // Footer
-  const footerY = 280
+  const footerY = Math.max(afterTotalY + 10, 270)
   doc.setDrawColor(226, 232, 240)
-  doc.line(margin, footerY - 10, pageWidth - margin, footerY - 10)
+  doc.line(margin, footerY - 5, pageWidth - margin, footerY - 5)
   
   doc.setFontSize(9)
   doc.setTextColor(150, 150, 150)
