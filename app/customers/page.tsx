@@ -146,7 +146,7 @@ export default function CustomersPage() {
         <div className="space-y-3">
           {customers.map((c) => (
             <div
-              key={c._id as string}
+              key={String(c._id)}
               className="bg-white rounded-2xl p-4 flex items-center gap-4 shadow-sm border border-slate-100"
             >
               <div
@@ -178,7 +178,7 @@ export default function CustomersPage() {
                   <Edit className="h-4 w-4" />
                 </button>
                 <button
-                  onClick={() => handleDelete(c._id as string)}
+                  onClick={() => handleDelete(String(c._id))}
                   className="w-9 h-9 rounded-lg flex items-center justify-center text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors"
                 >
                   <Trash2 className="h-4 w-4" />
