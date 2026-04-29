@@ -87,14 +87,9 @@ export function Navigation() {
     <div className="flex flex-col h-full bg-slate-900">
       {/* Logo */}
       <div className="px-5 py-5 border-b border-slate-800">
-        <Link href="/" className="flex items-center gap-2.5" onClick={() => setOpen(false)}>
-          <div className="w-7 h-7 bg-emerald-500 rounded-lg flex items-center justify-center flex-shrink-0">
-            <span className="text-white font-black text-xs">C</span>
-          </div>
-          <div className="min-w-0">
-            <p className="font-bold text-white text-sm leading-none">Century</p>
-            <p className="text-slate-500 text-[10px] mt-0.5">Cleaning Agency</p>
-          </div>
+        <Link href="/" onClick={() => setOpen(false)}>
+          <p className="font-bold text-white text-sm leading-none">Century Cleaning</p>
+          <p className="text-slate-500 text-[10px] mt-0.5">Inventory & Sales</p>
         </Link>
       </div>
 

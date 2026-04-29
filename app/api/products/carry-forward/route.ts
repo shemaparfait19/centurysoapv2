@@ -10,9 +10,9 @@ export async function POST(request: Request) {
     const products = await Product.find({});
 
     for (const product of products) {
-      product.sizes = product.sizes.map((size: ProductSize) => {
+      product.sizes = product.sizes.map((size: any) => {
         return {
-          ...size.toObject ? size.toObject() : size,
+          ...(size.toObject ? size.toObject() : size),
           openingStock: size.closingStock,
           stockIn: 0,
           stockSold: 0,
