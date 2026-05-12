@@ -13,6 +13,7 @@ import {
   UserCheck,
   TrendingUp,
   CreditCard,
+  ClipboardList,
   Menu,
   X,
   ChevronRight,
@@ -53,6 +54,7 @@ const sections = [
     label: 'Reports',
     items: [
       { label: 'Daily Reports', icon: FileText, href: '/reports/daily' },
+      { label: 'Stock Report', icon: ClipboardList, href: '/reports/stock' },
       { label: 'Custom Reports', icon: TrendingUp, href: '/reports/custom' },
     ],
   },

@@ -69,6 +69,9 @@ export interface ISale extends Document {
   amountPaid: number;
   balance: number;
   payments: PaymentRecord[];
+  returned: boolean;
+  returnDate?: Date;
+  returnNote?: string;
   createdAt: Date;
 }
 

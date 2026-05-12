@@ -32,6 +32,9 @@ const SaleSchema = new Schema<ISale>(
     amountPaid: { type: Number, default: 0 },
     balance: { type: Number, default: 0 },
     payments: [PaymentRecordSchema],
+    returned: { type: Boolean, default: false },
+    returnDate: { type: Date },
+    returnNote: { type: String },
   },
   {
     timestamps: true,

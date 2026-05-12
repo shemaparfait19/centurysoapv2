@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { format } from 'date-fns'
-import { Download, Trash2, FileText, DollarSign, SlidersHorizontal } from 'lucide-react'
+import { Download, Trash2, FileText, DollarSign, SlidersHorizontal, Undo2 } from 'lucide-react'
 import * as XLSX from 'xlsx'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -44,6 +44,10 @@ export default function SalesHistoryPage() {
   const [payMethod, setPayMethod] = useState<'Cash' | 'MoMo'>('Cash')
   const [payNote, setPayNote] = useState('')
   const [paySubmitting, setPaySubmitting] = useState(false)
+
+  const [returnDialog, setReturnDialog] = useState<{ open: boolean; sale: ISale | null }>({ open: false, sale: null })
+  const [returnNote, setReturnNote] = useState('')
+  const [returnSubmitting, setReturnSubmitting] = useState(false)
 
   useEffect(() => {
     fetch('/api/workers').then(r => r.json()).then(setWorkers).catch(console.error)
@@ -121,6 +125,26 @@ export default function SalesHistoryPage() {
       }
     } catch {
       toast({ variant: 'destructive', title: 'Error', description: 'Failed to delete' })
+    }
+  }
+
+  const handleReturn = async () => {
+    if (!returnDialog.sale) return
+    setReturnSubmitting(true)
+    try {
+      const res = await fetch(`/api/sales/${(returnDialog.sale as any)._id}/return`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ note: returnNote }),
+      })
+      if (!res.ok) throw new Error((await res.json()).error)
+      toast({ title: 'Return recorded', description: 'Stock has been restored.' })
+      setReturnDialog({ open: false, sale: null })
+      fetchSales()
+    } catch (e) {
+      toast({ variant: 'destructive', title: 'Error', description: e instanceof Error ? e.message : 'Failed' })
+    } finally {
+      setReturnSubmitting(false)
     }
   }
 
@@ -234,11 +258,13 @@ export default function SalesHistoryPage() {
             const sale = normalize(s)
             const saleAny = sale as any
             const hasBalance = (saleAny.balance || 0) > 0
+            const isReturned = saleAny.returned === true
             return (
               <div
                 key={sale._id.toString()}
                 className={cn(
                   'bg-white rounded-2xl p-4 shadow-sm border transition-colors',
+                  isReturned ? 'border-slate-200 bg-slate-50 opacity-70' :
                   hasBalance ? 'border-amber-200 bg-amber-50/30' : 'border-slate-100'
                 )}
               >
@@ -246,12 +272,17 @@ export default function SalesHistoryPage() {
                   {/* Left: customer + items */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-semibold text-slate-900">{sale.customer.name}</span>
-                      <PaymentBadge method={saleAny.paymentMethod} status={saleAny.paymentStatus} />
+                      <span className={cn('font-semibold', isReturned ? 'text-slate-400 line-through' : 'text-slate-900')}>
+                        {sale.customer.name}
+                      </span>
+                      {isReturned
+                        ? <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-200 text-slate-500">Returned</span>
+                        : <PaymentBadge method={saleAny.paymentMethod} status={saleAny.paymentStatus} />
+                      }
                     </div>
                     <div className="mt-1 space-y-0.5">
                       {sale.items.map((item, idx) => (
-                        <p key={idx} className="text-xs text-slate-600">
+                        <p key={idx} className="text-xs text-slate-500">
                           <span className="font-semibold">{item.quantity}×</span> {item.product} <span className="text-slate-400">({item.size})</span>
                         </p>
                       ))}
@@ -259,24 +290,38 @@ export default function SalesHistoryPage() {
                     <div className="flex items-center gap-3 mt-1.5">
                       <span className="text-[10px] text-slate-400">{formatShortDate(sale.date)}</span>
                       <span className="text-[10px] text-slate-400">{sale.workerName}</span>
-                      {hasBalance && (
+                      {hasBalance && !isReturned && (
                         <span className="text-[10px] font-semibold text-red-600">
                           Bal: {formatCurrency(saleAny.balance)}
                         </span>
+                      )}
+                      {isReturned && saleAny.returnNote && (
+                        <span className="text-[10px] text-slate-400 italic">{saleAny.returnNote}</span>
                       )}
                     </div>
                   </div>
 
                   {/* Right: total + actions */}
                   <div className="flex flex-col items-end gap-2 flex-shrink-0">
-                    <span className="font-bold text-slate-900">{formatCurrency(sale.grandTotal)}</span>
+                    <span className={cn('font-bold', isReturned ? 'text-slate-400 line-through' : 'text-slate-900')}>
+                      {formatCurrency(sale.grandTotal)}
+                    </span>
                     <div className="flex items-center gap-1">
-                      {hasBalance && (
+                      {hasBalance && !isReturned && (
                         <button
                           onClick={() => openPaymentDialog(sale)}
                           className="flex items-center gap-1 text-xs font-semibold text-amber-700 bg-amber-100 hover:bg-amber-200 px-2 py-1 rounded-lg transition-colors"
                         >
                           <DollarSign className="h-3 w-3" /> Pay
+                        </button>
+                      )}
+                      {!isReturned && (
+                        <button
+                          onClick={() => { setReturnDialog({ open: true, sale }); setReturnNote('') }}
+                          className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-violet-600 hover:bg-violet-50 transition-colors"
+                          title="Record Return"
+                        >
+                          <Undo2 className="h-4 w-4" />
                         </button>
                       )}
                       <button
@@ -384,6 +429,49 @@ export default function SalesHistoryPage() {
               className="bg-emerald-500 hover:bg-emerald-600"
             >
               {paySubmitting ? 'Saving...' : 'Record Payment'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Return Dialog */}
+      <Dialog open={returnDialog.open} onOpenChange={(open) => setReturnDialog(p => ({ ...p, open }))}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Record Return</DialogTitle>
+          </DialogHeader>
+          {returnDialog.sale && (
+            <div className="space-y-4 py-1">
+              <div className="bg-violet-50 border border-violet-100 rounded-xl p-3 text-sm space-y-1">
+                <p className="font-semibold text-violet-900">This will restore stock for:</p>
+                {normalize(returnDialog.sale).items.map((item, i) => (
+                  <p key={i} className="text-violet-700 text-xs">
+                    • {item.quantity}× {item.product} ({item.size})
+                  </p>
+                ))}
+                <p className="text-violet-600 font-medium pt-1">
+                  Total refund: {formatCurrency(normalize(returnDialog.sale).grandTotal)}
+                </p>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Reason / Note (optional)</Label>
+                <Input
+                  placeholder="e.g. wrong size, damaged goods..."
+                  value={returnNote}
+                  onChange={(e) => setReturnNote(e.target.value)}
+                  className="rounded-xl"
+                />
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setReturnDialog({ open: false, sale: null })}>Cancel</Button>
+            <Button
+              onClick={handleReturn}
+              disabled={returnSubmitting}
+              className="bg-violet-600 hover:bg-violet-700"
+            >
+              {returnSubmitting ? 'Processing...' : 'Confirm Return'}
             </Button>
           </DialogFooter>
         </DialogContent>
